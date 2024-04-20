@@ -1,0 +1,60 @@
+<!DOCTYPE html5>
+
+<html>
+
+<head>
+<title>BrickBreak</title>
+<meta charset="utf-8" />
+
+<style>
+body {
+    display: grid;
+    place-items: center;
+}
+canvas {
+    border: 1px black solid;
+}
+</style>
+
+<script>
+const BRICK_WIDTH = 100;
+const BRICK_HEIGHT = 50;
+const ROW_MAX = 10;
+const COLUMN_MAX = 5;
+const CANVAS_WIDTH = BRICK_WIDTH * COLUMN_MAX;
+const CANVAS_HEIGHT = BRICK_HEIGHT * (ROW_MAX + 1);
+
+class Entity {
+    constructor (x, y) {
+        this.X = x;
+        this.Y = y;
+    }
+}
+
+class Ball {
+}
+
+window.onload = () => {
+    initUI();
+};
+
+function initUI () {
+    let canvas = document.createElement("canvas");
+    canvas.setAttribute("width", CANVAS_WIDTH.toString() + "px");
+    canvas.setAttribute("height", CANVAS_HEIGHT.toString() + "px");
+    canvas.addEventListener("mousemove", mouseMoveInCanvas);
+    document.querySelector("body").appendChild(canvas);
+}
+
+let ballShooterAngle = 0;
+
+function mouseMoveInCanvas (e) {
+    console.log(Math.atan((CANVAS_HEIGHT + 2 - e.offsetY) / Math.abs(e.offsetX - CANVAS_WIDTH / 2)) / Math.PI);
+}
+</script>
+</head>
+
+<body>
+</body>
+
+</html>
