@@ -17,22 +17,18 @@ canvas {
 </style>
 
 <script>
+const BOARD_ROW_MAX = 10;
+const BOARD_COLUMN_MAX = 5;
+
 const BRICK_WIDTH = 100;
 const BRICK_HEIGHT = 50;
-const ROW_MAX = 10;
-const COLUMN_MAX = 5;
-const CANVAS_WIDTH = BRICK_WIDTH * COLUMN_MAX;
-const CANVAS_HEIGHT = BRICK_HEIGHT * (ROW_MAX + 1);
 
-class Entity {
-    constructor (x, y) {
-        this.X = x;
-        this.Y = y;
-    }
-}
+const BALL_RADIUS = 2;
 
-class Ball {
-}
+const CANVAS_WIDTH = BRICK_WIDTH * BOARD_COLUMN_MAX;
+const CANVAS_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 2);
+const ORIGIN_X = CANVAS_WIDTH / 2;
+const ORIGIN_Y = CANVAS_HEIGHT - BRICK_HEIGHT;
 
 window.onload = () => {
     initUI();
@@ -44,6 +40,13 @@ function initUI () {
     canvas.setAttribute("height", CANVAS_HEIGHT.toString() + "px");
     canvas.addEventListener("mousemove", mouseMoveInCanvas);
     document.querySelector("body").appendChild(canvas);
+
+    let ctx = canvas.getContext("2d");
+    ctx.translate(ORIGIN_X, ORIGIN_Y);
+    ctx.rotate(Math.PI);
+
+    ctx.arc(ORIGIN_X, ORIGIN_Y, BALL_RADIUS, Math.PI * 2);
+    ctx.fill();
 }
 
 let ballShooterAngle = 0;
