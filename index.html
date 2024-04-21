@@ -17,42 +17,132 @@ canvas {
 </style>
 
 <script>
-const BOARD_ROW_MAX = 10;
-const BOARD_COLUMN_MAX = 5;
-
 const BRICK_WIDTH = 100;
 const BRICK_HEIGHT = 50;
 
-const BALL_RADIUS = 2;
+const BALL_RADIUS = 5;
 
-const CANVAS_WIDTH = BRICK_WIDTH * BOARD_COLUMN_MAX;
-const CANVAS_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 2);
-const ORIGIN_X = CANVAS_WIDTH / 2;
-const ORIGIN_Y = CANVAS_HEIGHT - BRICK_HEIGHT;
+const ARROW_LENGTH = 100;
+
+const BOARD_ROW_MAX = 10;
+const BOARD_COLUMN_MAX = 6;
+const BOARD_WIDTH = BRICK_WIDTH * BOARD_COLUMN_MAX;
+const BOARD_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 2);
+const ORIGIN_X = BOARD_WIDTH / 2;
+const ORIGIN_Y = BOARD_HEIGHT - BRICK_HEIGHT;
+
+class Ball {
+    constructor (x, y) {
+        this.X = x;
+        this.Y = y;
+        this.velocityX = 0;
+        this.velocityY = 0;
+    }
+
+    shotToward (x, y) {
+        let distance = Math.sqrt((x * x) + (y * y));
+        this.velocityX = x / distance;
+        this.velocityY = y / distance;
+    }
+
+    move () {
+        this.X += this.velocityX;
+        this.Y += this.velocityY;
+    }
+
+    isInactive () {
+        return (this.Y < 0);
+    }
+}
+
+let ballList = [];
+let brickList = [];
+let activeBallCnt;
+
+let ctx;
+let raf;
 
 window.onload = () => {
     initUI();
 };
 
 function initUI () {
-    let canvas = document.createElement("canvas");
-    canvas.setAttribute("width", CANVAS_WIDTH.toString() + "px");
-    canvas.setAttribute("height", CANVAS_HEIGHT.toString() + "px");
-    canvas.addEventListener("mousemove", mouseMoveInCanvas);
-    document.querySelector("body").appendChild(canvas);
+    let board = document.createElement("canvas");
+    board.setAttribute("width", BOARD_WIDTH.toString() + "px");
+    board.setAttribute("height", BOARD_HEIGHT.toString() + "px");
+    board.addEventListener("mousemove", boardMouseMove);
+    board.addEventListener("click", boardClick);
+    document.querySelector("body").appendChild(board);
 
-    let ctx = canvas.getContext("2d");
+    ctx = board.getContext("2d");
     ctx.translate(ORIGIN_X, ORIGIN_Y);
     ctx.rotate(Math.PI);
+}
 
-    ctx.arc(ORIGIN_X, ORIGIN_Y, BALL_RADIUS, Math.PI * 2);
+function boardMouseMove (e) {
+    let translatedX = ORIGIN_X - e.offsetX;
+    let translatedY =Math.max(ORIGIN_Y - e.offsetY, 0);
+
+    ctx.clearRect(-ORIGIN_X, -ORIGIN_Y, BOARD_WIDTH, ORIGIN_Y + ARROW_LENGTH + 1);
+ 
+    ctx.save();
+
+    ctx.rotate(Math.atan(-translatedX / translatedY));
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, ARROW_LENGTH);
+    ctx.lineTo(ARROW_LENGTH * 0.02, ARROW_LENGTH * 0.9);
+    ctx.lineTo(ARROW_LENGTH * -0.02, ARROW_LENGTH * 0.9);
+    ctx.lineTo(0, ARROW_LENGTH);
+    ctx.moveTo(0, 0);
+    ctx.stroke();
+
+    ctx.restore();
+
+    ctx.arc(0, 0, BALL_RADIUS, Math.PI * 2, 0);
     ctx.fill();
 }
 
-let ballShooterAngle = 0;
+function boardClick (e) {
+    e.target.removeEventListener("mousemove", boardMouseMove);
+    e.target.removeEventListener("click", boardClick);
+    
+    activeBallCnt = ballList.length;
 
-function mouseMoveInCanvas (e) {
-    console.log(Math.atan((CANVAS_HEIGHT + 2 - e.offsetY) / Math.abs(e.offsetX - CANVAS_WIDTH / 2)) / Math.PI);
+    raf = window.requestAnimationFrame(collideModeLoop);
+}
+
+function collideModeLoop () {
+    computeMoveAndCollideOfBalls();
+
+    if (activeBallCnt === 0) switchToAimMode();
+
+    checkCollision();
+    drawBalls();
+    drawBricks();
+}
+
+function computeMoveAndCollideOfBalls () {
+    ballList.forEach((ball) => {
+        ball.move();
+        if (ball.isInactive()) {
+            --activeBallCnt;
+        }
+    });
+}
+
+function drawBalls () {
+    ballList.forEach((ball) => {
+        
+    });
+}
+
+function drawBricks () {
+
+}
+
+function switchToAimMode () {
+    window.cancelAnimationFrame(raf);
 }
 </script>
 </head>
