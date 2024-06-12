@@ -50,8 +50,28 @@ class Ball {
         this.Y += this.velocityY;
     }
 
+    checkIfCollidedToWall () {
+        //todo
+    }
+
     isInactive () {
         return (this.Y < 0);
+    }
+}
+
+class Brick {
+    constructor (x, y, hp) {
+        this.X = x;
+        this.Y = y;
+        this.HP = hp;
+    }
+
+    isHit () {
+        this.HP -= 1;
+    }
+
+    isBroken () {
+        return (this.HP <= 0);
     }
 }
 
@@ -117,7 +137,6 @@ function collideModeLoop () {
 
     if (activeBallCnt === 0) switchToAimMode();
 
-    checkCollision();
     drawBalls();
     drawBricks();
 }
@@ -125,6 +144,8 @@ function collideModeLoop () {
 function computeMoveAndCollideOfBalls () {
     ballList.forEach((ball) => {
         ball.move();
+        ball.checkIfCollidedToWallAndCompute();
+        brickList.forEach
         if (ball.isInactive()) {
             --activeBallCnt;
         }
@@ -138,7 +159,9 @@ function drawBalls () {
 }
 
 function drawBricks () {
-
+    ballList.forEach((ball) => {
+        
+    });
 }
 
 function switchToAimMode () {
