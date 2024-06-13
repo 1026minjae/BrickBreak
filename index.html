@@ -21,28 +21,27 @@ const BRICK_WIDTH = 100;
 const BRICK_HEIGHT = 50;
 
 const BALL_RADIUS = 5;
+const GAP_BETWEEN_BALLS = 10;
 
 const ARROW_LENGTH = 100;
 
 const BOARD_ROW_MAX = 10;
 const BOARD_COLUMN_MAX = 6;
 const BOARD_WIDTH = BRICK_WIDTH * BOARD_COLUMN_MAX;
-const BOARD_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 2);
+const BOARD_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 4);
 const ORIGIN_X = BOARD_WIDTH / 2;
 const ORIGIN_Y = BOARD_HEIGHT - BRICK_HEIGHT;
 
+const BOARD_LEFT_WALL_X = ORIGIN_X;
+const BOARD_RIGHT_WALL_X = -ORIGIN_X;
+const BOARD_TOP_WALL_Y = ORIGIN_Y;
+
 class Ball {
-    constructor (x, y) {
+    constructor (x, y, vx, vy) {
         this.X = x;
         this.Y = y;
-        this.velocityX = 0;
-        this.velocityY = 0;
-    }
-
-    shotToward (x, y) {
-        let distance = Math.sqrt((x * x) + (y * y));
-        this.velocityX = x / distance;
-        this.velocityY = y / distance;
+        this.velocityX = vx;
+        this.velocityY = vy;
     }
 
     move () {
@@ -50,12 +49,14 @@ class Ball {
         this.Y += this.velocityY;
     }
 
-    checkIfCollidedToWall () {
-        //todo
+    checkIfCollidedToWallAndCompute () {
+        if (this.X >= BOARD_LEFT_WALL_X - BALL_RADIUS) this.velocityX *= -1;
+        if (this.X <= BOARD_RIGHT_WALL_X + BALL_RADIUS) this.velocityX *= -1;
+        if (this.Y >= BOARD_TOP_WALL_Y - BALL_RADIUS) this.velocityY *= -1;
     }
 
     isInactive () {
-        return (this.Y < 0);
+        return (this.Y <= 0 && this.velocityY < 0);
     }
 }
 
@@ -75,15 +76,16 @@ class Brick {
     }
 }
 
-let ballList = [];
+let ballCnt = 0;
 let brickList = [];
-let activeBallCnt;
+let activeBallList = [];
 
 let ctx;
 let raf;
 
 window.onload = () => {
     initUI();
+    initGame();
 };
 
 function initUI () {
@@ -99,11 +101,24 @@ function initUI () {
     ctx.rotate(Math.PI);
 }
 
+function initGame () {    
+    addNewBall();
+
+    // todo: add initial bricks
+}
+
+function addNewBall () {
+    ballCnt += 1;
+}
+
 function boardMouseMove (e) {
     let translatedX = ORIGIN_X - e.offsetX;
     let translatedY =Math.max(ORIGIN_Y - e.offsetY, 0);
 
-    ctx.clearRect(-ORIGIN_X, -ORIGIN_Y, BOARD_WIDTH, ORIGIN_Y + ARROW_LENGTH + 1);
+    ctx.clearRect(-ORIGIN_X, 
+                    ORIGIN_Y - BOARD_HEIGHT, 
+                    BOARD_WIDTH, 
+                    BOARD_HEIGHT - ORIGIN_Y + ARROW_LENGTH + 1);
  
     ctx.save();
 
@@ -124,48 +139,81 @@ function boardMouseMove (e) {
 }
 
 function boardClick (e) {
+    let translatedX = ORIGIN_X - e.offsetX;
+    let translatedY = ORIGIN_Y - e.offsetY;
+
     e.target.removeEventListener("mousemove", boardMouseMove);
     e.target.removeEventListener("click", boardClick);
     
     activeBallCnt = ballList.length;
 
+    arrangeBalls(translatedX, translatedY);
+
     raf = window.requestAnimationFrame(collideModeLoop);
 }
 
+function arrangeBalls (targetX, targetY) {
+    let distance = Math.sqrt((targetX * targetX) + (targetY * targetY));
+    let velocityX = targetX / distance;
+    let velocityY = targetY / distance;
+    let gapX = -GAP_BETWEEN_BALLS * velocityX;
+    let gapY = -GAP_BETWEEN_BALLS * velocityY;
+
+    for (let i = 0; i < ballCnt; ++i) {
+        let newBall = new Ball(i * gapX, i * gapY, velocityX, velocityY);
+        activeBallList.push(newBall);
+    }
+}
+
 function collideModeLoop () {
+    clearBoard();
     computeMoveAndCollideOfBalls();
 
-    if (activeBallCnt === 0) switchToAimMode();
+    if (activeBallList.length === 0) switchToAimMode();
 
     drawBalls();
     drawBricks();
+}
+
+function clearBoard () {
+    ctx.clearRect(-ORIGIN_X, 
+                    ORIGIN_Y - BOARD_HEIGHT, 
+                    BOARD_WIDTH, 
+                    BOARD_HEIGHT);
 }
 
 function computeMoveAndCollideOfBalls () {
     ballList.forEach((ball) => {
         ball.move();
         ball.checkIfCollidedToWallAndCompute();
-        brickList.forEach
         if (ball.isInactive()) {
             --activeBallCnt;
+// todo
         }
     });
 }
 
 function drawBalls () {
     ballList.forEach((ball) => {
-        
+        if (ball.isActiveButNotShotYet()) continue; 
+        ctx.arc(Math.floor(ball.X), Math.floor(ball.Y), BALL_RADIUS, Math.PI * 2, 0);
+        ctx.fill();
     });
 }
 
 function drawBricks () {
-    ballList.forEach((ball) => {
-        
+    brickList.forEach((brick) => {
+        ctx.fillRect(brick.bottomRightX, brick.bottomRightY, BRICK_WIDTH, BRICK_HEIGHT);
+        ctx.fill();
     });
 }
 
 function switchToAimMode () {
     window.cancelAnimationFrame(raf);
+
+    let board = document.querySelector("canvas");
+    board.addEventListener("mousemove", boardMouseMove);
+    board.addEventListener("click", boardClick);
 }
 </script>
 </head>
