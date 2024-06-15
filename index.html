@@ -33,6 +33,7 @@ const BOARD_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 4);
 const ORIGIN_X = BOARD_WIDTH / 2;
 const ORIGIN_Y = BOARD_HEIGHT - BRICK_HEIGHT;
 
+const BOARD_BRICKAREA_BOTTOM_Y = BOARD_HEIGHT - BRICK_HEIGHT * BOARD_ROW_MAX;
 const BOARD_LEFT_WALL_X = ORIGIN_X;
 const BOARD_RIGHT_WALL_X = -ORIGIN_X;
 const BOARD_TOP_WALL_Y = ORIGIN_Y;
@@ -57,6 +58,15 @@ class Ball {
         else if (this.Y >= BOARD_TOP_WALL_Y - BALL_RADIUS) this.velocityY *= -1;
     }
 
+    checkIfCollidedToGivenBrickThenReverseDirection (rowIdx, colIdx) {
+        let brickLeftX = BOARD_RIGHT_WALL_X + colIdx * BRICK_WIDTH;
+        let brickRightX = brickTopLeftX - BRICK_WIDTH;
+        let brickTopY = BOARD_BRICKAREA_BOTTOM_Y + rowIdx * BRICK_HEIGHT;
+        let brickBottomY = brickTopLeftY - BRICK_HEIGHT;
+
+        // todo
+    }
+
     isActive () {
         return (this.Y >= 0 || this.velocityY > 0);
     }
@@ -66,31 +76,16 @@ class Ball {
     }
 }
 
-class Brick {
-    constructor (x, y, hp) {
-        this.X = x;
-        this.Y = y;
-        this.HP = hp;
-    }
-
-    isHit () {
-        this.HP -= 1;
-    }
-
-    isBroken () {
-        return (this.HP <= 0);
-    }
-}
-
 let ballCnt = 0;
-let brickList = [];
 let activeBallList = [];
+let brickData;
 
 let ctx;
 let timer;
 
 window.onload = () => {
     initUI();
+    initBrickData();
     initGame();
 };
 
@@ -105,34 +100,73 @@ function initUI () {
     ctx = board.getContext("2d");
     ctx.translate(ORIGIN_X, ORIGIN_Y);
     ctx.rotate(Math.PI);
+    ctx.font = "20px bold serif";
+}
+
+function initBrickData () {
+    brickData = new Array(BOARD_ROW_MAX);
+    for (let rowIdx = 0; rowIdx < BOARD_ROW_MAX; ++rowIdx) {
+        brickData[rowIdx] = new Array(BOARD_COLUMN_MAX);
+        for (let colIdx = 0; colIdx < BOARD_COLUMN_MAX; ++colIdx) {
+            brickData[rowIdx][colIdx] = 0;
+        }
+    }
 }
 
 function initGame () {    
     addNewBall();
     addNewBall();
     addNewBall();
-    addNewBall();
-    addNewBall();
 
-    // todo: add initial bricks
+    addNewBrick();
+    addNewBrick();
+    addNewBrick();
+
+    drawBricks();
+    aimModeProcedure(0, 1);
 }
 
 function addNewBall () {
     ballCnt += 1;
 }
 
+function addNewBrick () {
+    let randomRow;
+    let randomColumn;
+
+    do {
+        randomRow = Math.floor(Math.random() * BOARD_ROW_MAX);
+        randomColumn = Math.floor(Math.random() * BOARD_COLUMN_MAX); 
+    } while (brickData[randomRow][randomColumn] !== 0);
+    
+    brickData[randomRow][randomColumn] = 1;
+}
+
 function boardMouseMove (e) {
     let translatedX = ORIGIN_X - e.offsetX;
     let translatedY =Math.max(ORIGIN_Y - e.offsetY, 0);
 
+    aimModeProcedure(translatedX, translatedY);
+}
+
+function aimModeProcedure (targetX, targetY) {
+    clearAreaOfArrow();
+    drawArrowTowards(targetX, targetY);
+    drawBaseline();
+    drawBallCntTxt();
+}
+
+function clearAreaOfArrow () {
     ctx.clearRect(BOARD_RIGHT_WALL_X, 
                     BOARD_BOTTOM_WALL_Y, 
                     BOARD_WIDTH, 
                     ARROW_LENGTH - BOARD_BOTTOM_WALL_Y + 1);
- 
+}
+
+function drawArrowTowards (x, y) {
     ctx.save();
 
-    ctx.rotate(Math.atan(-translatedX / translatedY));
+    ctx.rotate(Math.atan(-x / y));
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(0, ARROW_LENGTH);
@@ -148,16 +182,34 @@ function boardMouseMove (e) {
     ctx.fill();
 }
 
+function drawBaseline () {
+    ctx.beginPath();
+    ctx.moveTo(BOARD_LEFT_WALL_X, 0);
+    ctx.lineTo(BOARD_RIGHT_WALL_X, 0);
+    ctx.stroke();
+}
+
+function drawBallCntTxt () {
+    ctx.rotate(Math.PI);
+    ctx.fillText(ballCnt.toString(), BOARD_RIGHT_WALL_X + 5, -5);
+    ctx.rotate(Math.PI);
+}
+
 function boardClick (e) {
     let translatedX = ORIGIN_X - e.offsetX;
     let translatedY = ORIGIN_Y - e.offsetY;
 
-    e.target.removeEventListener("mousemove", boardMouseMove);
-    e.target.removeEventListener("click", boardClick);
+    switchToCollideMode(translatedX, translatedY);
+}
 
-    arrangeBalls(translatedX, translatedY);
+function switchToCollideMode (targetX, targetY) {
+    let board = document.querySelector("canvas");
+    board.removeEventListener("mousemove", boardMouseMove);
+    board.removeEventListener("click", boardClick);
 
-    timer = setInterval(collideModeLoop, 20);
+    arrangeBalls(targetX, targetY);
+
+    timer = setInterval(collideModeProcedure, 20);
 }
 
 function arrangeBalls (targetX, targetY) {
@@ -173,17 +225,17 @@ function arrangeBalls (targetX, targetY) {
     }
 }
 
-function collideModeLoop () {
+function collideModeProcedure () {
     clearBoard();
-
     moveAndCollideBalls();
-
     removeInactiveBalls();
 
     if (activeBallList.length === 0) switchToAimMode();
 
     drawBalls();
     drawBricks();
+    drawBaseline();
+    drawBallCntTxt();
 }
 
 function clearBoard () {
@@ -216,10 +268,16 @@ function drawBalls () {
 }
 
 function drawBricks () {
-    brickList.forEach((brick) => {
-        ctx.fillRect(brick.bottomRightX, brick.bottomRightY, BRICK_WIDTH, BRICK_HEIGHT);
-        ctx.fill();
-    });
+    for (let rowIdx = 0; rowIdx < BOARD_ROW_MAX; ++rowIdx) {
+        for (let colIdx = 0; colIdx < BOARD_COLUMN_MAX; ++colIdx) {
+            if (brickData[rowIdx][colIdx] !== 0) {
+                ctx.fillRect((BOARD_RIGHT_WALL_X + colIdx * BRICK_WIDTH), 
+                             (BOARD_BRICKAREA_BOTTOM_Y + rowIdx * BRICK_HEIGHT), 
+                             BRICK_WIDTH, BRICK_HEIGHT);
+                ctx.fill();
+            }
+        }
+    }
 }
 
 function switchToAimMode () {
@@ -228,6 +286,8 @@ function switchToAimMode () {
     let board = document.querySelector("canvas");
     board.addEventListener("mousemove", boardMouseMove);
     board.addEventListener("click", boardClick);
+
+    aimModeProcedure(0, 1);
 }
 </script>
 </head>
