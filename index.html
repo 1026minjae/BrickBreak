@@ -29,11 +29,11 @@ const ARROW_LENGTH = 100;
 const BOARD_ROW_MAX = 10;
 const BOARD_COLUMN_MAX = 6;
 const BOARD_WIDTH = BRICK_WIDTH * BOARD_COLUMN_MAX;
-const BOARD_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 4);
-const ORIGIN_X = BOARD_WIDTH / 2;
+const BOARD_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 5);
+const ORIGIN_X = Math.floor(BOARD_WIDTH / 2);
 const ORIGIN_Y = BOARD_HEIGHT - BRICK_HEIGHT;
 
-const BOARD_BRICKAREA_BOTTOM_Y = BOARD_HEIGHT - BRICK_HEIGHT * BOARD_ROW_MAX;
+const BOARD_BRICKAREA_BOTTOM_Y = BOARD_HEIGHT - BRICK_HEIGHT * (BOARD_ROW_MAX + 1);
 const BOARD_LEFT_WALL_X = ORIGIN_X;
 const BOARD_RIGHT_WALL_X = -ORIGIN_X;
 const BOARD_TOP_WALL_Y = ORIGIN_Y;
@@ -56,15 +56,37 @@ class Ball {
         if (this.X >= BOARD_LEFT_WALL_X - BALL_RADIUS) this.velocityX *= -1;
         else if (this.X <= BOARD_RIGHT_WALL_X + BALL_RADIUS) this.velocityX *= -1;
         else if (this.Y >= BOARD_TOP_WALL_Y - BALL_RADIUS) this.velocityY *= -1;
+        else return false;
+
+        return true;
     }
 
     checkIfCollidedToGivenBrickThenReverseDirection (rowIdx, colIdx) {
-        let brickLeftX = BOARD_RIGHT_WALL_X + colIdx * BRICK_WIDTH;
-        let brickRightX = brickTopLeftX - BRICK_WIDTH;
-        let brickTopY = BOARD_BRICKAREA_BOTTOM_Y + rowIdx * BRICK_HEIGHT;
-        let brickBottomY = brickTopLeftY - BRICK_HEIGHT;
+        let brickRightX = BOARD_RIGHT_WALL_X + colIdx * BRICK_WIDTH;
+        let brickLeftX = brickRightX + BRICK_WIDTH;
+        let brickBottomY = BOARD_BRICKAREA_BOTTOM_Y + rowIdx * BRICK_HEIGHT;
+        let brickTopY = brickBottomY + BRICK_HEIGHT;
 
         // todo
+        if ((this.X <= brickLeftX + BALL_RADIUS) && (this.X > brickLeftX) &&
+           (this.Y <= brickTopY) && (this.Y >= brickBottomY)) { // ball hits left side of brick
+            this.velocityX *= -1;
+        }
+        else if ((this.X >= brickRightX - BALL_RADIUS) && (this.X < brickRightX) &&
+           (this.Y <= brickTopY) && (this.Y >= brickBottomY)) { // ball hits right side of brick
+            this.velocityX *= -1;
+        }
+        else if ((this.Y <= brickTopY + BALL_RADIUS) && (this.Y > brickTopY) &&
+           (this.X <= brickRightX) && (this.Y >= brickLeftX)) { // ball hits top side of brick
+            this.velocityY *= -1;
+        }
+        else if ((this.Y >= brickBottomY - BALL_RADIUS) && (this.Y < brickBottomY) &&
+           (this.X <= brickRightX) && (this.X >= brickLeftX)) { // ball hits bottom side of brick
+            this.velocityY *= -1;
+        }
+        else return false;
+
+        return true;
     }
 
     isActive () {
@@ -249,6 +271,14 @@ function moveAndCollideBalls () {
     activeBallList.forEach((ball) => {
         ball.move();
         ball.checkIfCollidedToWallThenReverseDirection();
+        for (let rowIdx = 0; rowIdx < BOARD_ROW_MAX; ++rowIdx) {
+            for (let colIdx = 0; colIdx < BOARD_COLUMN_MAX; ++colIdx) {
+                if (brickData[rowIdx][colIdx] !== 0 && 
+                   ball.checkIfCollidedToGivenBrickThenReverseDirection(rowIdx, colIdx)) {
+                    brickData[rowIdx][colIdx] -= 1;
+                }
+            }
+        }
     });
 }
 
@@ -268,16 +298,28 @@ function drawBalls () {
 }
 
 function drawBricks () {
+    ctx.save();
+    ctx.rotate(Math.PI);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
     for (let rowIdx = 0; rowIdx < BOARD_ROW_MAX; ++rowIdx) {
         for (let colIdx = 0; colIdx < BOARD_COLUMN_MAX; ++colIdx) {
             if (brickData[rowIdx][colIdx] !== 0) {
-                ctx.fillRect((BOARD_RIGHT_WALL_X + colIdx * BRICK_WIDTH), 
-                             (BOARD_BRICKAREA_BOTTOM_Y + rowIdx * BRICK_HEIGHT), 
+                ctx.fillRect((BOARD_LEFT_WALL_X - (colIdx + 1) * BRICK_WIDTH), 
+                             (-BOARD_BRICKAREA_BOTTOM_Y - (rowIdx + 1) * BRICK_HEIGHT), 
                              BRICK_WIDTH, BRICK_HEIGHT);
-                ctx.fill();
+                ctx.fillStyle = "white";
+                ctx.fillText(brickData[rowIdx][colIdx].toString(), 
+                             (BOARD_LEFT_WALL_X - Math.floor((colIdx + 0.5) * BRICK_WIDTH)),
+                             (-BOARD_BRICKAREA_BOTTOM_Y - Math.floor((rowIdx + 0.5) * BRICK_HEIGHT)),
+                             BRICK_WIDTH);
+                ctx.fillStyle = "black";
             }
         }
     }
+
+    ctx.restore();
 }
 
 function switchToAimMode () {
