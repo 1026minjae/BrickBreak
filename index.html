@@ -17,27 +17,35 @@ canvas {
 </style>
 
 <script>
-const BRICK_WIDTH = 100;
-const BRICK_HEIGHT = 50;
-
 const BALL_RADIUS = 5;
 const BALL_SPEED = 10;
-const GAP_BETWEEN_BALLS = 4;
+const FRAME_DIFF_BETWEEN_BALLS = 4;
 
 const ARROW_LENGTH = 100;
 
-const BOARD_ROW_MAX = 10;
-const BOARD_COLUMN_MAX = 6;
-const BOARD_WIDTH = BRICK_WIDTH * BOARD_COLUMN_MAX;
-const BOARD_HEIGHT = BRICK_HEIGHT * (BOARD_ROW_MAX + 5);
-const ORIGIN_X = Math.floor(BOARD_WIDTH / 2);
-const ORIGIN_Y = BOARD_HEIGHT - BRICK_HEIGHT;
+const BRICK_WIDTH = 100;
+const BRICK_HEIGHT = 50;
+const BRICK_INITIAL_HEALTH = 1;
 
-const BOARD_BRICKAREA_BOTTOM_Y = BOARD_HEIGHT - BRICK_HEIGHT * (BOARD_ROW_MAX + 1);
-const BOARD_LEFT_WALL_X = ORIGIN_X;
-const BOARD_RIGHT_WALL_X = -ORIGIN_X;
-const BOARD_TOP_WALL_Y = ORIGIN_Y;
-const BOARD_BOTTOM_WALL_Y = ORIGIN_Y - BOARD_HEIGHT;
+const BRICKGRID_ROW_MAX = 10;
+const BRICKGRID_COLUMN_MAX = 6;
+
+const BRICKAREA_HEIGHT = BRICK_HEIGHT * BRICKGRID_ROW_MAX;
+const ARROWAREA_HEIGHT = BRICK_HEIGHT * 5;
+
+const BOARD_WIDTH = BRICK_WIDTH * BRICKGRID_COLUMN_MAX;
+const BOARD_HEIGHT = BRICKAREA_HEIGHT + ARROWAREA_HEIGHT;
+
+const SHOOTINGPOINT_X = Math.floor(BOARD_WIDTH / 2);
+const SHOOTINGPOINT_Y = BOARD_HEIGHT - BRICK_HEIGHT;
+
+const BOARD_LEFT_WALL_X 	= 0;
+const BOARD_RIGHT_WALL_X = BOARD_WIDTH;
+const BOARD_TOP_WALL_Y = 0;
+const BOARD_BOTTOM_WALL_Y = BOARD_HEIGHT;
+
+const INITIAL_BALL_CNT = 3;
+const INITIAL_BRICK_CNT = 3;
 
 class Ball {
     constructor (x, y, vx, vy) {
@@ -53,9 +61,9 @@ class Ball {
     }
 
     checkIfCollidedToWallThenReverseDirection () {
-        if (this.X >= BOARD_LEFT_WALL_X - BALL_RADIUS) this.velocityX *= -1;
-        else if (this.X <= BOARD_RIGHT_WALL_X + BALL_RADIUS) this.velocityX *= -1;
-        else if (this.Y >= BOARD_TOP_WALL_Y - BALL_RADIUS) this.velocityY *= -1;
+        if 		((this.X - BOARD_LEFT_WALL_X) <= BALL_RADIUS)	this.velocityX *= -1;
+        else if 	((BOARD_RIGHT_WALL_X - this.X) <= BALL_RADIUS)	this.velocityX *= -1;
+        else if 	((this.Y - BOARD_TOP_WALL_Y) <= BALL_RADIUS)	this.velocityY *= -1;
         else return false;
 
         return true;
@@ -107,7 +115,7 @@ let timer;
 
 window.onload = () => {
     initUI();
-    initBrickData();
+    initBrickGrid();
     initGame();
 };
 
@@ -120,29 +128,27 @@ function initUI () {
     document.querySelector("body").appendChild(board);
 
     ctx = board.getContext("2d");
-    ctx.translate(ORIGIN_X, ORIGIN_Y);
-    ctx.rotate(Math.PI);
     ctx.font = "20px bold serif";
 }
 
-function initBrickData () {
-    brickData = new Array(BOARD_ROW_MAX);
-    for (let rowIdx = 0; rowIdx < BOARD_ROW_MAX; ++rowIdx) {
-        brickData[rowIdx] = new Array(BOARD_COLUMN_MAX);
-        for (let colIdx = 0; colIdx < BOARD_COLUMN_MAX; ++colIdx) {
-            brickData[rowIdx][colIdx] = 0;
+function initBrickGrid () {
+    brickGrid = new Array(BRICKGRID_ROW_MAX);
+    for (let rowIdx = 0; rowIdx < BRICKGRID_ROW_MAX; ++rowIdx) {
+        brickGrid[rowIdx] = new Array(BRICKGRID_COLUMN_MAX);
+        for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
+            brickGrid[rowIdx][colIdx] = 0;
         }
     }
 }
 
-function initGame () {    
-    addNewBall();
-    addNewBall();
-    addNewBall();
+function initGame () {
+    for (let i = 0; i <= INITIAL_BALL_CNT; ++i) {
+        addNewBall();
+    }
 
-    addNewBrick();
-    addNewBrick();
-    addNewBrick();
+    for (let i = 0; i <= INITIAL_BRICK_CNT; ++i) {
+        addNewBrick();
+    }
 
     drawBricks();
     aimModeProcedure(0, 1);
@@ -157,38 +163,44 @@ function addNewBrick () {
     let randomColumn;
 
     do {
-        randomRow = Math.floor(Math.random() * BOARD_ROW_MAX);
-        randomColumn = Math.floor(Math.random() * BOARD_COLUMN_MAX); 
-    } while (brickData[randomRow][randomColumn] !== 0);
+        randomRow = Math.floor(Math.random() * BRICKGRID_ROW_MAX);
+        randomColumn = Math.floor(Math.random() * BRICKGRID_COLUMN_MAX); 
+    } while (brickGrid[randomRow][randomColumn] !== 0);
     
-    brickData[randomRow][randomColumn] = 1;
+    brickGrid[randomRow][randomColumn] = brickHealthAtCurrentLevel();
+}
+
+function brickHealthAtCurrentLevel () {
+    return BRICK_INITIAL_HEALTH;
 }
 
 function boardMouseMove (e) {
-    let translatedX = ORIGIN_X - e.offsetX;
-    let translatedY =Math.max(ORIGIN_Y - e.offsetY, 0);
+    let translatedX = SHOOTINGPOINT_X - e.offsetX;
+    let translatedY = Math.max((SHOOTINGPOINT_Y - e.offsetY), 0);
 
     aimModeProcedure(translatedX, translatedY);
 }
 
 function aimModeProcedure (targetX, targetY) {
-    clearAreaOfArrow();
+    clearArrowArea();
     drawArrowTowards(targetX, targetY);
     drawBaseline();
     drawBallCntTxt();
 }
 
-function clearAreaOfArrow () {
-    ctx.clearRect(BOARD_RIGHT_WALL_X, 
-                    BOARD_BOTTOM_WALL_Y, 
+function clearArrowArea () {
+    ctx.clearRect(BOARD_LEFT_WALL_X, 
+                    BRICKAREA_HEIGHT, 
                     BOARD_WIDTH, 
-                    ARROW_LENGTH - BOARD_BOTTOM_WALL_Y + 1);
+                    ARROWAREA_HEIGHT);
 }
 
 function drawArrowTowards (x, y) {
     ctx.save();
 
-    ctx.rotate(Math.atan(-x / y));
+    ctx.translate(SHOOTINGPOINT_X, SHOOTINGPOINT_Y);
+    ctx.rotate(Math.PI + Math.atan(-x / y));
+
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(0, ARROW_LENGTH);
@@ -198,28 +210,26 @@ function drawArrowTowards (x, y) {
     ctx.moveTo(0, 0);
     ctx.stroke();
 
-    ctx.restore();
-
     ctx.arc(0, 0, BALL_RADIUS, Math.PI * 2, 0);
     ctx.fill();
+
+    ctx.restore();
 }
 
 function drawBaseline () {
     ctx.beginPath();
-    ctx.moveTo(BOARD_LEFT_WALL_X, 0);
-    ctx.lineTo(BOARD_RIGHT_WALL_X, 0);
+    ctx.moveTo(BOARD_LEFT_WALL_X, SHOOTINGPOINT_Y);
+    ctx.lineTo(BOARD_RIGHT_WALL_X, SHOOTINGPOINT_Y);
     ctx.stroke();
 }
 
 function drawBallCntTxt () {
-    ctx.rotate(Math.PI);
-    ctx.fillText(ballCnt.toString(), BOARD_RIGHT_WALL_X + 5, -5);
-    ctx.rotate(Math.PI);
+    ctx.fillText(ballCnt.toString(), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 5);
 }
 
 function boardClick (e) {
-    let translatedX = ORIGIN_X - e.offsetX;
-    let translatedY = ORIGIN_Y - e.offsetY;
+    let translatedX = SHOOTINGPOINT_X - e.offsetX;
+    let translatedY = SHOOTINGPOINT_Y - e.offsetY;
 
     switchToCollideMode(translatedX, translatedY);
 }
@@ -236,13 +246,15 @@ function switchToCollideMode (targetX, targetY) {
 
 function arrangeBalls (targetX, targetY) {
     let distance = Math.sqrt((targetX * targetX) + (targetY * targetY));
-    let velocityX = targetX / distance * BALL_SPEED;
-    let velocityY = targetY / distance * BALL_SPEED;
-    let gapX = -GAP_BETWEEN_BALLS * velocityX;
-    let gapY = -GAP_BETWEEN_BALLS * velocityY;
+    let velocityX = -targetX / distance * BALL_SPEED;
+    let velocityY = -targetY / distance * BALL_SPEED;
+    let gapX = -FRAME_DIFF_BETWEEN_BALLS * velocityX;
+    let gapY = -FRAME_DIFF_BETWEEN_BALLS * velocityY;
 
     for (let i = 0; i < ballCnt; ++i) {
-        let newBall = new Ball(i * gapX, i * gapY, velocityX, velocityY);
+        let newBall = new Ball(SHOOTINGPOINT_X + i * gapX, 
+                                     SHOOTINGPOINT_Y + i * gapY, 
+                                     velocityX, velocityY);
         activeBallList.push(newBall);
     }
 }
@@ -261,8 +273,8 @@ function collideModeProcedure () {
 }
 
 function clearBoard () {
-    ctx.clearRect(BOARD_RIGHT_WALL_X, 
-                    BOARD_BOTTOM_WALL_Y, 
+    ctx.clearRect(BOARD_LEFT_WALL_X, 
+                    BOARD_TOP_WALL_Y, 
                     BOARD_WIDTH, 
                     BOARD_HEIGHT);
 }
@@ -271,11 +283,11 @@ function moveAndCollideBalls () {
     activeBallList.forEach((ball) => {
         ball.move();
         ball.checkIfCollidedToWallThenReverseDirection();
-        for (let rowIdx = 0; rowIdx < BOARD_ROW_MAX; ++rowIdx) {
-            for (let colIdx = 0; colIdx < BOARD_COLUMN_MAX; ++colIdx) {
-                if (brickData[rowIdx][colIdx] !== 0 && 
+        for (let rowIdx = 0; rowIdx < BRICKGRID_ROW_MAX; ++rowIdx) {
+            for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
+                if (brickGrid[rowIdx][colIdx] !== 0 && 
                    ball.checkIfCollidedToGivenBrickThenReverseDirection(rowIdx, colIdx)) {
-                    brickData[rowIdx][colIdx] -= 1;
+                    brickGrid[rowIdx][colIdx] -= 1;
                 }
             }
         }
@@ -303,8 +315,8 @@ function drawBricks () {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    for (let rowIdx = 0; rowIdx < BOARD_ROW_MAX; ++rowIdx) {
-        for (let colIdx = 0; colIdx < BOARD_COLUMN_MAX; ++colIdx) {
+    for (let rowIdx = 0; rowIdx < BRICKGRID_ROW_MAX; ++rowIdx) {
+        for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
             if (brickData[rowIdx][colIdx] !== 0) {
                 ctx.fillRect((BOARD_LEFT_WALL_X - (colIdx + 1) * BRICK_WIDTH), 
                              (-BOARD_BRICKAREA_BOTTOM_Y - (rowIdx + 1) * BRICK_HEIGHT), 
