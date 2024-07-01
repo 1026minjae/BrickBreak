@@ -98,6 +98,7 @@ class Ball {
         if (
             ((brick.leftX - BALL_RADIUS <= this.X) && (this.X <= brick.leftX)) 
             && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
+            && (this.velocityX > 0)
         ) { 
             this.velocityX *= -1;
             isCollided = true;
@@ -106,6 +107,7 @@ class Ball {
         else if (
             ((brick.rightX <= this.X) && (this.X <= brick.rightX + BALL_RADIUS)) 
             && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
+            && (this.velocityX < 0)
         ) { 
             this.velocityX *= -1;
             isCollided = true;
@@ -114,6 +116,7 @@ class Ball {
         else if (
             ((brick.topY - BALL_RADIUS <= this.Y) && (this.Y <= brick.topY))
             && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
+            && (this.velocityY > 0)
         ) { 
             this.velocityY *= -1;
             isCollided = true;
@@ -122,6 +125,7 @@ class Ball {
         else if (
             ((brick.bottomY <= this.Y) && (this.Y <= brick.bottomY + BALL_RADIUS))
             && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
+            && (this.velocityY < 0)
         ) { 
             this.velocityY *= -1;
             isCollided = true;
@@ -224,7 +228,6 @@ function initUI () {
     let forcelySwitchToAimModeBtn = document.createElement("input");
     forcelySwitchToAimModeBtn.setAttribute("type", "button");
     forcelySwitchToAimModeBtn.setAttribute("value", "Kill Balls");
-    forcelySwitchToAimModeBtn.addEventListener("click", forcelySwitchToAimMode);
     body.appendChild(forcelySwitchToAimModeBtn);
 }
 
@@ -294,7 +297,7 @@ function hitBrick (rowIdx, colIdx) {
 
 function boardMouseMove (e) {
     let translatedX = SHOOTINGPOINT_X - e.offsetX;
-    let translatedY = Math.max((SHOOTINGPOINT_Y - e.offsetY), 0);
+    let translatedY = Math.max((SHOOTINGPOINT_Y - e.offsetY), Math.abs(translatedX * Math.tan(Math.PI / 18)));
 
     aimModeProcedure(translatedX, translatedY);
 }
@@ -348,22 +351,20 @@ function drawBaseline () {
 }
 
 function drawCurrentLevelTxt () {
-    ctx.fillText(("Level " + currentLevel.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 45);
+    ctx.fillText(("Level " + currentLevel.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 48);
 }
 
 function drawScoreTxt () {
-    ctx.fillText(("Score: " + score.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 25);
+    ctx.fillText(("Score: " + score.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 28);
 }
 
 function drawBallCntTxt () {
-    ctx.fillText(("●: " + ballCnt.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 5);
+    ctx.fillText(("●: " + ballCnt.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 8);
 }
 
 function boardClick (e) {
-    if (e.offsetY > SHOOTINGPOINT_Y) return;
-
     let translatedX = SHOOTINGPOINT_X - e.offsetX;
-    let translatedY = SHOOTINGPOINT_Y - e.offsetY;
+    let translatedY = Math.max((SHOOTINGPOINT_Y - e.offsetY), Math.abs(translatedX * Math.tan(Math.PI / 18)));
 
     switchToCollideMode(translatedX, translatedY);
 }
@@ -372,6 +373,9 @@ function switchToCollideMode (targetX, targetY) {
     let board = document.querySelector("canvas");
     board.removeEventListener("mousemove", boardMouseMove);
     board.removeEventListener("click", boardClick);
+
+    let forcelySwitchToAimModeBtn = document.querySelector("input");
+    forcelySwitchToAimModeBtn.addEventListener("click", forcelySwitchToAimMode);
 
     arrangeBalls(targetX, targetY);
     
@@ -510,6 +514,9 @@ function switchToAimMode () {
         let board = document.querySelector("canvas");
         board.addEventListener("mousemove", boardMouseMove);
         board.addEventListener("click", boardClick);
+
+        let forcelySwitchToAimModeBtn = document.querySelector("input");
+        forcelySwitchToAimModeBtn.removeEventListener("click", forcelySwitchToAimMode);
     }
 }
 
