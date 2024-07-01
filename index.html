@@ -18,8 +18,8 @@ canvas {
 
 <script>
 const BALL_RADIUS = 5;
-const BALL_SPEED = 5;
-const FRAME_DIFF_BETWEEN_BALLS = 5;
+const BALL_SPEED = 3;
+const FRAME_DIFF_BETWEEN_BALLS = 10;
 
 const ARROW_LENGTH = 100;
 
@@ -92,6 +92,7 @@ class Ball {
 
     checkIfCollidedToGivenBrickThenReverseDirection (rowIdx, colIdx) {
         let brick = brickGrid[rowIdx][colIdx];
+        let isCollided = false;
 
         // 1. Ball hits left side of brick
         if (
@@ -99,6 +100,7 @@ class Ball {
             && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
         ) { 
             this.velocityX *= -1;
+            isCollided = true;
         }
         // 2. Ball hits right side of brick
         else if (
@@ -106,6 +108,7 @@ class Ball {
             && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
         ) { 
             this.velocityX *= -1;
+            isCollided = true;
         }
         // 3. Ball hits top side of brick
         else if (
@@ -113,6 +116,7 @@ class Ball {
             && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
         ) { 
             this.velocityY *= -1;
+            isCollided = true;
         }
         // 4. Ball hits bottom side of brick
         else if (
@@ -120,42 +124,54 @@ class Ball {
             && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
         ) { 
             this.velocityY *= -1;
+            isCollided = true;
         }
         // 5. Ball hits top-left corner of brick
         else if (
             ((this.X < brick.leftX) && (this.Y < brick.topY))
             && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
-            this.velocityX *= -1;
-            this.velocityY *= -1;
+            if (this.velocityX >= 0 && this.velocityY >= 0) {
+                this.velocityX *= -1;
+                this.velocityY *= -1;
+                isCollided = true;
+            }
         }
         // 6. Ball hits top-right corner of brick
         else if (
             ((this.X > brick.rightX) && (this.Y < brick.topY))
             && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
-            this.velocityX *= -1;
-            this.velocityY *= -1;
+            if (this.velocityX <= 0 && this.velocityY >= 0) {
+                this.velocityX *= -1;
+                this.velocityY *= -1;
+                isCollided = true;
+            }
         }
         // 7. Ball hits bottom-left corner of brick
         else if (
             ((this.X < brick.leftX) && (this.Y > brick.bottomY))
             && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
-            this.velocityX *= -1;
-            this.velocityY *= -1;
+            if (this.velocityX >= 0 && this.velocityY <= 0) {
+                this.velocityX *= -1;
+                this.velocityY *= -1;
+                isCollided = true;
+            }
         }
         // 8. Ball hits bottom-right corner of brick
         else if (
             ((this.X > brick.rightX) && (this.Y > brick.bottomY))
             && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
-            this.velocityX *= -1;
-            this.velocityY *= -1;
+            if (this.velocityX <= 0 && this.velocityY <= 0) {
+                this.velocityX *= -1;
+                this.velocityY *= -1;
+                isCollided = true;
+            }
         }
-        else return false;
 
-        return true;
+        return isCollided;
     }
 
     isActive () {
@@ -181,6 +197,8 @@ let score = 0;
 let brokenBrickAtThisLevelCnt = 0;
 let brokenBrickAtThisLevelInitialHealthSum = 0;
 
+let forcelySwitchToAimModeFlag = false;
+
 let ctx;
 let timer;
 
@@ -191,15 +209,23 @@ window.onload = () => {
 };
 
 function initUI () {
+    let body = document.querySelector("body");
+
     let board = document.createElement("canvas");
     board.setAttribute("width", BOARD_WIDTH.toString() + "px");
     board.setAttribute("height", BOARD_HEIGHT.toString() + "px");
     board.addEventListener("mousemove", boardMouseMove);
     board.addEventListener("click", boardClick);
-    document.querySelector("body").appendChild(board);
+    body.appendChild(board);
 
     ctx = board.getContext("2d");
     ctx.font = "20px bolder serif";
+
+    let forcelySwitchToAimModeBtn = document.createElement("input");
+    forcelySwitchToAimModeBtn.setAttribute("type", "button");
+    forcelySwitchToAimModeBtn.setAttribute("value", "Kill Balls");
+    forcelySwitchToAimModeBtn.addEventListener("click", forcelySwitchToAimMode);
+    body.appendChild(forcelySwitchToAimModeBtn);
 }
 
 function initBrickGrid () {
@@ -362,6 +388,8 @@ function arrangeBalls (targetX, targetY) {
     let gapX = -FRAME_DIFF_BETWEEN_BALLS * velocityX;
     let gapY = -FRAME_DIFF_BETWEEN_BALLS * velocityY;
 
+    while (activeBallList.length > 0) activeBallList.pop();
+
     for (let i = 0; i < ballCnt; ++i) {
         let newBall = new Ball(SHOOTINGPOINT_X + i * gapX, 
                                      SHOOTINGPOINT_Y + i * gapY, 
@@ -375,7 +403,7 @@ function collideModeProcedure () {
     moveAndCollideBalls();
     removeInactiveBalls();
 
-    if (activeBallList.length === 0) {
+    if (activeBallList.length === 0 || forcelySwitchToAimModeFlag) {
         switchToAimMode();
     }
     else {
@@ -398,14 +426,19 @@ function clearBoard () {
 function moveAndCollideBalls () {
     activeBallList.forEach((ball) => {
         ball.move();
+
         if (ball.isShot()) {
             ball.checkIfCollidedToWallThenReverseDirection();
-            for (let rowIdx = 0; rowIdx < BRICKGRID_ROW_MAX; ++rowIdx) {
+
+            let isCollided = false;
+            for (let rowIdx = 0; (rowIdx < BRICKGRID_ROW_MAX) && (!isCollided); ++rowIdx) {
                 for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
                     if (brickGrid[rowIdx][colIdx] !== undefined
                        && ball.checkIfCollidedToGivenBrickThenReverseDirection(rowIdx, colIdx)
                     ) {
                         hitBrick(rowIdx, colIdx);
+                        isCollided = true;
+                        break;
                     }
                 }
             }
@@ -455,6 +488,7 @@ function drawBricks () {
 
 function switchToAimMode () {
     clearInterval(timer);
+    forcelySwitchToAimModeFlag = false;
 
     if (gameOver()) {
         drawGameOverMsg();
@@ -465,19 +499,22 @@ function switchToAimMode () {
         giveTenBricksBrokenScore();
         giveCleanBoardScore();
 
-        addBricksAtLevelUp();
-
-        currentLevel += 1;
         brokenBrickAtThisLevelCnt = 0;
         brokenBrickAtThisLevelInitialHealthSum = 0;
+        currentLevel += 1;
+
+        addBricksAtLevelUp();
+        drawBricks();
+        resetArrowArea();
 
         let board = document.querySelector("canvas");
         board.addEventListener("mousemove", boardMouseMove);
         board.addEventListener("click", boardClick);
-
-        drawBricks();
-        resetArrowArea();
     }
+}
+
+function forcelySwitchToAimMode () {
+    forcelySwitchToAimModeFlag = true;
 }
 
 function gameOver () {
