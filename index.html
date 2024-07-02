@@ -94,14 +94,32 @@ class Ball {
         let brick = brickGrid[rowIdx][colIdx];
         let isCollided = false;
 
-        // 1. Ball hits left side of brick
+        // 1. Collided to left side of brick?
         if (
-            ((brick.leftX - BALL_RADIUS <= this.X) && (this.X <= brick.leftX)) 
+            ((brick.leftX - BALL_RADIUS < this.X) && (this.X <= brick.leftX)) 
             && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
-            && (this.velocityX > 0)
         ) { 
-            this.velocityX *= -1;
-            isCollided = true;
+            if (this.velocityX > 0) {
+                let cy = ((brick.leftX - BALL_RADIUS - this.X) / this.velocityX * this.velocityY + this.Y);
+                if (cy < brick.topY) {
+                    // todo: collided to top-left corner
+                }
+                else if (cy <= brick.bottomY) {
+                    // Collided to left side of brick
+                    this.X = brick.leftX - BALL_RADIUS;
+                    this.Y = cy;
+                    this.velocityX *= -1;
+                    isCollided = true;
+                }
+                else {
+                    // todo: collided to bottom-left corner
+                }
+            }
+            else if (this.velocityX === 0) {
+                // todo: collided to top-left corner
+                // todo: collided to bottom-left corner
+                isCollided = true;
+            }
         }
         // 2. Ball hits right side of brick
         else if (
