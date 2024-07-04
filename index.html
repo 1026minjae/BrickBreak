@@ -20,6 +20,8 @@ canvas {
 const BALL_RADIUS = 5;
 const BALL_SPEED = 3;
 const FRAME_DIFF_BETWEEN_BALLS = 10;
+const BALL_RADIUS_SQ = BALL_RADIUS * BALL_RADIUS;
+const BALL_SPEED_SQ = BALL_SPEED * BALL_SPEED;
 
 const ARROW_LENGTH = 100;
 
@@ -82,7 +84,7 @@ class Ball {
     }
 
     checkIfCollidedToWallThenReverseDirection () {
-        let isCollided = false;
+        let isCollided = true;
         let cx = this.X;
         let cy = this.Y;
 
@@ -104,6 +106,7 @@ class Ball {
 
             this.velocityY *= -1;
         }
+        else isCollided = false;
         
         this.X = cx;
         this.Y = cy;
@@ -114,31 +117,99 @@ class Ball {
     checkIfCollidedToGivenBrickThenReverseDirection (rowIdx, colIdx) {
         let brick = brickGrid[rowIdx][colIdx];
         let isCollided = false;
+        let cx = this.X;
+        let cy = this.Y;
+        let a, tmp1, tmp2, tmp3;
+        let cosA, sinA, tmp4, tmp5, tmp6;
+        let cvx = this.velocityX;
+        let cvy = this.velocityY;
 
-        // 1. Collided to left side of brick?
+        /* Collided to left side of brick? */
         if (
             ((brick.leftX - BALL_RADIUS < this.X) && (this.X <= brick.leftX)) 
             && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
         ) { 
             if (this.velocityX > 0) {
-                let cy = ((brick.leftX - BALL_RADIUS - this.X) / this.velocityX * this.velocityY + this.Y);
+                a = this.velocityY / this.velocityX;
+                cx = brick.leftX - BALL_RADIUS;
+                cy = a * (cx - this.X) + this.Y;
+
+                /* Collided to top-left corner */
                 if (cy < brick.topY) {
-                    // todo: collided to top-left corner
+                    tmp1 = a * this.X - this.Y + brick.topY;
+                    tmp2 = 1 + a * a;
+                    tmp3 = tmp1 - a * brick.leftX;
+
+                    cx = (brick.leftX + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
+                    cy = a * (cx - this.X) + this.Y;
+
+                    tmp4 = this.velocityX * cx + this.velocityY * cy;
+                    tmp5 = BALL_SPEED_SQ * (cx * cx + cy * cy);
+                    tmp6 = this.velocityY * cx - this.velocityX * cy;
+
+                    cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
+                    sinA = 2 * tmp4 * tmp6 / tmp5;
+
+                    cvx = this.velocityX * cosA - this.velocityY * sinA;
+                    cvy = this.velocityX * sinA + this.velocityY * cosA;
                 }
+                /* Collided to left side of brick */
                 else if (cy <= brick.bottomY) {
-                    // Collided to left side of brick
-                    this.X = brick.leftX - BALL_RADIUS;
-                    this.Y = cy;
-                    this.velocityX *= -1;
-                    isCollided = true;
+                    cvx *= -1;
                 }
+                /* Collided to bottom-left corner */
                 else {
-                    // todo: collided to bottom-left corner
+                    tmp1 = a * this.X - this.Y + brick.bottomY;
+                    tmp2 = 1 + a * a;
+                    tmp3 = tmp1 - a * brick.leftX;
+
+                    cx = (brick.leftX + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
+                    cy = a * (cx - this.X) + this.Y;
+
+                    tmp4 = this.velocityX * cx + this.velocityY * cy;
+                    tmp5 = BALL_SPEED_SQ * (cx * cx + cy * cy);
+                    tmp6 = this.velocityY * cx - this.velocityX * cy;
+
+                    cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
+                    sinA = 2 * tmp4 * tmp6 / tmp5;
+
+                    cvx = this.velocityX * cosA - this.velocityY * sinA;
+                    cvy = this.velocityX * sinA + this.velocityY * cosA;
                 }
+                
+                isCollided = true;
             }
-            else if (this.velocityX === 0) {
-                // todo: collided to top-left corner
-                // todo: collided to bottom-left corner
+            else if (this.velocityX === 0 && this.velocityY !== 0) {
+                a = this.velocityX / this.velocityY;
+
+                tmp1 = a * this.Y - this.X + brick.leftX;
+                tmp2 = 1 + a * a;
+
+                /* Collided to top-left corner */
+                if (this.velocityY > 0) {
+                    tmp3 = tmp1 - a * brick.topY;
+
+                    cy = (brick.topY + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
+                    cx = a * (cy - this.Y) + this.X;
+                }
+                /* Collided to bottom-left corner */
+                else {
+                    tmp3 = tmp1 - a * brick.bottomY;
+
+                    cy = (brick.bottomY + a * tmp1 + Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
+                    cx = a * (cy - this.Y) + this.X;
+                }
+
+                tmp4 = this.velocityX * cx + this.velocityY * cy;
+                tmp5 = BALL_SPEED_SQ * (cx * cx + cy * cy);
+                tmp6 = this.velocityY * cx - this.velocityX * cy;
+
+                cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
+                sinA = 2 * tmp4 * tmp6 / tmp5;
+
+                cvx = this.velocityX * cosA - this.velocityY * sinA;
+                cvy = this.velocityX * sinA + this.velocityY * cosA;
+
                 isCollided = true;
             }
         }
@@ -148,7 +219,7 @@ class Ball {
             && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
             && (this.velocityX < 0)
         ) { 
-            this.velocityX *= -1;
+            cvx *= -1;
             isCollided = true;
         }
         // 3. Ball hits top side of brick
@@ -157,7 +228,7 @@ class Ball {
             && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
             && (this.velocityY > 0)
         ) { 
-            this.velocityY *= -1;
+            cvy *= -1;
             isCollided = true;
         }
         // 4. Ball hits bottom side of brick
@@ -166,7 +237,7 @@ class Ball {
             && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
             && (this.velocityY < 0)
         ) { 
-            this.velocityY *= -1;
+            cvy *= -1;
             isCollided = true;
         }
         // 5. Ball hits top-left corner of brick
@@ -175,8 +246,8 @@ class Ball {
             && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
             if (this.velocityX >= 0 && this.velocityY >= 0) {
-                this.velocityX *= -1;
-                this.velocityY *= -1;
+                cvx *= -1;
+                cvy *= -1;
                 isCollided = true;
             }
         }
@@ -186,19 +257,99 @@ class Ball {
             && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
             if (this.velocityX <= 0 && this.velocityY >= 0) {
-                this.velocityX *= -1;
-                this.velocityY *= -1;
+                cvx *= -1;
+                cvy *= -1;
                 isCollided = true;
             }
         }
-        // 7. Ball hits bottom-left corner of brick
+        /* Collided to bottom-left corner of brick? */
         else if (
             ((this.X < brick.leftX) && (this.Y > brick.bottomY))
             && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
-            if (this.velocityX >= 0 && this.velocityY <= 0) {
-                this.velocityX *= -1;
-                this.velocityY *= -1;
+            if (this.velocityX > 0 && this.velocityY >= 0) {
+                a = this.velocityY / this.velocityX;
+                cx = brick.leftX - BALL_RADIUS;
+                cy = a * (cx - this.X) + this.Y;
+
+                /* Collided to left side of brick */
+                if (cy <= brick.bottomY) {
+                    cvx *= -1;
+                }
+                /* Collided to bottom-left corner */
+                else {
+                    tmp1 = a * this.X - this.Y + brick.bottomY;
+                    tmp2 = 1 + a * a;
+                    tmp3 = tmp1 - a * brick.leftX;
+
+                    cx = (brick.leftX + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
+                    cy = a * (cx - this.X) + this.Y;
+
+                    tmp4 = this.velocityX * cx + this.velocityY * cy;
+                    tmp5 = BALL_SPEED_SQ * (cx * cx + cy * cy);
+                    tmp6 = this.velocityY * cx - this.velocityX * cy;
+
+                    cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
+                    sinA = 2 * tmp4 * tmp6 / tmp5;
+
+                    cvx = this.velocityX * cosA - this.velocityY * sinA;
+                    cvy = this.velocityX * sinA + this.velocityY * cosA;
+                }
+
+                isCollided = true;
+            }
+            /* Collided to bottom-left corner */
+            else if (this.velocityX > 0 && this.velocityY < 0) {
+                a = this.velocityY / this.velocityX;
+                    
+                tmp1 = a * this.X - this.Y + brick.bottomY;
+                tmp2 = 1 + a * a;
+                tmp3 = tmp1 - a * brick.leftX;
+
+                cx = (brick.leftX + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
+                cy = a * (cx - this.X) + this.Y;
+
+                tmp4 = this.velocityX * cx + this.velocityY * cy;
+                tmp5 = BALL_SPEED_SQ * (cx * cx + cy * cy);
+                tmp6 = this.velocityY * cx - this.velocityX * cy;
+
+                cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
+                sinA = 2 * tmp4 * tmp6 / tmp5;
+
+                cvx = this.velocityX * cosA - this.velocityY * sinA;
+                cvy = this.velocityX * sinA + this.velocityY * cosA;
+
+                isCollided = true;
+            }
+            else if (this.velocityX <= 0 && this.velocityY < 0) {
+                a = this.velocityX / this.velocityY;
+                cy = brick.bottomY + BALL_RADIUS;
+                cx = a * (cy - this.Y) + this.X;
+
+                /* Collided to bottom side of brick */
+                if (cx >= brick.leftX) {
+                    cvy *= -1;
+                }
+                /* Collided to bottom-left corner */
+                else {
+                    tmp1 = a * this.Y - this.X + brick.leftX;
+                    tmp2 = 1 + a * a;
+                    tmp3 = tmp1 - a * brick.bottomY;
+
+                    cy = (brick.bottomY + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
+                    cx = a * (cy - this.Y) + this.X;
+
+                    tmp4 = this.velocityX * cx + this.velocityY * cy;
+                    tmp5 = BALL_SPEED_SQ * (cx * cx + cy * cy);
+                    tmp6 = this.velocityY * cx - this.velocityX * cy;
+
+                    cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
+                    sinA = 2 * tmp4 * tmp6 / tmp5;
+
+                    cvx = this.velocityX * cosA - this.velocityY * sinA;
+                    cvy = this.velocityX * sinA + this.velocityY * cosA;
+                }
+
                 isCollided = true;
             }
         }
@@ -208,11 +359,16 @@ class Ball {
             && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
         ) {
             if (this.velocityX <= 0 && this.velocityY <= 0) {
-                this.velocityX *= -1;
-                this.velocityY *= -1;
+                cvx *= -1;
+                cvy *= -1;
                 isCollided = true;
             }
         }
+
+        this.X = cx;
+        this.Y = cy;
+        this.velocityX = cvx;
+        this.velocityY = cvy;
 
         return isCollided;
     }
