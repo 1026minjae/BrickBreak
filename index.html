@@ -82,12 +82,33 @@ class Ball {
     }
 
     checkIfCollidedToWallThenReverseDirection () {
-        if 		((this.X - BOARD_LEFT_WALL_X) <= BALL_RADIUS)	this.velocityX *= -1;
-        else if 	((BOARD_RIGHT_WALL_X - this.X) <= BALL_RADIUS)	this.velocityX *= -1;
-        else if 	((this.Y - BOARD_TOP_WALL_Y) <= BALL_RADIUS)	this.velocityY *= -1;
-        else return false;
+        let isCollided = false;
+        let cx = this.X;
+        let cy = this.Y;
 
-        return true;
+        if ((this.X - BOARD_LEFT_WALL_X) <= BALL_RADIUS) {
+            cx = BOARD_LEFT_WALL_X + BALL_RADIUS;
+            cy = this.velocityY / this.velocityX * (cx - this.X) + this.Y;
+
+            this.velocityX *= -1;
+        }
+        else if ((BOARD_RIGHT_WALL_X - this.X) <= BALL_RADIUS) {
+            cx = BOARD_RIGHT_WALL_X - BALL_RADIUS;
+            cy = this.velocityY / this.velocityX * (cx - this.X) + this.Y;
+
+            this.velocityX *= -1;
+        }
+        else if ((this.Y - BOARD_TOP_WALL_Y) <= BALL_RADIUS) {
+            cy = BOARD_TOP_WALL_Y + BALL_RADIUS;
+            cx = this.velocityX / this.velocityY * (cy - this.Y) + this.X;
+
+            this.velocityY *= -1;
+        }
+        
+        this.X = cx;
+        this.Y = cy;
+
+        return isCollided;
     }
 
     checkIfCollidedToGivenBrickThenReverseDirection (rowIdx, colIdx) {
