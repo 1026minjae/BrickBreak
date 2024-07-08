@@ -68,6 +68,13 @@ const COLLIDE_DIR_RIGHT_TO_LEFT = 1;
 const COLLIDE_DIR_TOP_TO_BOTTOM = 2;
 const COLLIDE_DIR_BOTTOM_TO_TOP = 3;
 
+const CORNER_TOPLEFT = 0;
+const CORNER_TOPRIGHT = 1;
+const CORNER_BOTTOMLEFT = 2;
+const CORNER_BOTTOMRIGHT = 3;
+
+const GRADIENT_YDIVX = 0;
+const GRADIENT_XDIVY = 1;
 
 class Brick {
     constructor (health, rowIdx, colIdx) {
@@ -133,12 +140,8 @@ class Ball {
     checkIfCollidedToGivenBrickThenReverseDirection (rowIdx, colIdx) {
         let brick = brickGrid[rowIdx][colIdx];
         let isCollided = false;
-        let cx = this.X;
-        let cy = this.Y;
-        let a, tmp1, tmp2, tmp3;
-        let cosA, sinA, dx, dy, tmp4, tmp5, tmp6;
-        let cvx = this.velocityX;
-        let cvy = this.velocityY;
+        let ballCenterWhenCollidedX, ballCenterWhenCollidedY;
+        let gradient;
 
         /* Collided to left side of brick? */
         if (
@@ -152,51 +155,17 @@ class Ball {
 
                 /* Collided to top-left corner */
                 if (cy < brick.topY) {
-                    tmp1 = a * this.X - this.Y + brick.topY;
-                    tmp2 = 1 + a * a;
-                    tmp3 = tmp1 - a * brick.leftX;
-
-                    cx = (brick.leftX + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
-                    cy = a * (cx - this.X) + this.Y;
-
-                    dx = brick.leftX - cx;
-                    dy = brick.topY - cy;
-
-                    tmp4 = this.velocityX * dx + this.velocityY * dy;
-                    tmp5 = BALL_SPEED_SQ * (dx * dx + dy * dy);
-                    tmp6 = this.velocityY * dx - this.velocityX * dy;
-
-                    cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
-                    sinA = 2 * tmp4 * tmp6 / tmp5;
-
-                    cvx = this.velocityX * cosA - this.velocityY * sinA;
-                    cvy = this.velocityX * sinA + this.velocityY * cosA;
+                    collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
                 }
                 /* Collided to left side of brick */
                 else if (cy <= brick.bottomY) {
-                    cvx *= -1;
+                    this.X = ballCenterWhenCollidedX;
+                    this.Y = ballCenterWhenCollidedY;
+                    this.velocityX *= -1;
                 }
                 /* Collided to bottom-left corner */
                 else {
-                    tmp1 = a * this.X - this.Y + brick.bottomY;
-                    tmp2 = 1 + a * a;
-                    tmp3 = tmp1 - a * brick.leftX;
-
-                    cx = (brick.leftX + a * tmp1 - Math.sqrt(BALL_RADIUS_SQ * tmp2 - tmp3 * tmp3)) / tmp2;
-                    cy = a * (cx - this.X) + this.Y;
-
-                    dx = brick.leftX - cx;
-                    dy = brick.bottomY - cy;
-
-                    tmp4 = this.velocityX * dx + this.velocityY * dy;
-                    tmp5 = BALL_SPEED_SQ * (dx * dx + dy * dy);
-                    tmp6 = this.velocityY * dx - this.velocityX * dy;
-
-                    cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
-                    sinA = 2 * tmp4 * tmp6 / tmp5;
-
-                    cvx = this.velocityX * cosA - this.velocityY * sinA;
-                    cvy = this.velocityX * sinA + this.velocityY * cosA;
+                    collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
                 }
                 
                 isCollided = true;
@@ -986,35 +955,66 @@ class Ball {
     }
 
     collideToCorner (cornerType, cornerX, cornerY, gradientType, gradient) {
-        let cx, cy;
+        let ballCenterWhenCollidedX, ballCenterWhenCollidedY;
+        let tmp1, tmp2, tmp3;
+        let coefficient_YDIVX, coefficient_XDIVY;
+        let diffBetweenCenterAndCollisionPointX, diffBetweenCenterAndCollisionPointY;
+        let tmp4, tmp5, tmp6;
+        let cosA, sinA;
+        let changedVelocityX, changedVelocityY;
+        
 
-        if (direction === COLLIDE_DIR_LEFT_TO_RIGHT) {
-            cx = sideLocation - BALL_RADIUS;
-            cy = this.velocityY / this.velocityX * (cx - this.X) + this.Y;
-
-            this.velocityX *= -1;
+        if (cornerType === CORNER_TOPLEFT) {
+            coefficient_YDIVX = -1;
+            coefficient_XDIVY = -1;
         }
-        else if (direction === COLLIDE_DIR_RIGHT_TO_LEFT) {
-            cx = sideLocation + BALL_RADIUS;
-            cy = this.velocityY / this.velocityX * (cx - this.X) + this.Y;
-
-            this.velocityX *= -1;
+        else if (cornerType === CORNER_TOPRIGHT) {
+            coefficient_YDIVX = 1;
+            coefficient_XDIVY = -1;
         }
-        else if (direction === COLLIDE_DIR_TOP_TO_BOTTOM) {
-            cy = sideLocation - BALL_RADIUS;
-            cx = this.velocityX / this.velocityY * (cy - this.Y) + this.X;
-
-            this.velocityY *= -1;
+        else if (cornerType === CORNER_BOTTOMLEFT) {
+            coefficient_YDIVX = -1;
+            coefficient_XDIVY = 1;
         }
-        else /* if (direction === COLLIDE_DIR_BOTTOM_TO_TOP) */ {
-            cy = sideLocation + BALL_RADIUS;
-            cx = this.velocityX / this.velocityY * (cy - this.Y) + this.X;
-
-            this.velocityY *= -1;
+        else /* if (cornerType === CORNER_BOTTOMRIGHT) */ {
+            coefficient_YDIVX = 1;
+            coefficient_XDIVY = 1;
         }
 
-        this.X = cx;
-        this.Y = cy;
+        tmp1 = 1 + gradient * gradient;
+
+        if (gradientType === GRADIENT_YDIVX) {
+            tmp2 = gradient * this.X - this.Y + cornerY;
+            tmp3 = tmp1 - gradient * cornerX;
+
+            ballCenterWhenCollidedX = (cornerX + gradient * tmp2 + coefficient_YDIVX * Math.sqrt(BALL_RADIUS_SQ * tmp1 - tmp3 * tmp3)) / tmp1;
+            ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
+         }
+        else /* if (gradientType === GRADIENT_XDIVY) */ {
+            tmp2 = gradient * this.Y - this.X + cornerX;
+            tmp3 = tmp1 - gradient * cornerY;
+
+            ballCenterWhenCollidedY = (cornerY + gradient * tmp2 + coefficient_XDIVY * Math.sqrt(BALL_RADIUS_SQ * tmp1 - tmp3 * tmp3)) / tmp1;
+            ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
+         } 
+
+        diffBetweenCenterAndCollisionPointX = cornerX - ballCenterWhenCollidedX;
+        diffBetweenCenterAndCollisionPointY = cornerY - ballCenterWhenCollidedY;
+
+        tmp4 = this.velocityX * diffBetweenCenterAndCollisionPointX + this.velocityY * diffBetweenCenterAndCollisionPointY;
+        tmp5 = BALL_SPEED_SQ * (diffBetweenCenterAndCollisionPointX * diffBetweenCenterAndCollisionPointX + diffBetweenCenterAndCollisionPointY * diffBetweenCenterAndCollisionPointY);
+        tmp6 = this.velocityY * diffBetweenCenterAndCollisionPointX - this.velocityX * diffBetweenCenterAndCollisionPointY;
+
+        cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
+        sinA = 2 * tmp4 * tmp6 / tmp5;
+
+        changedVelocityX = this.velocityX * cosA - this.velocityY * sinA;
+        changedVelocityY = this.velocityX * sinA + this.velocityY * cosA;
+
+        this.X = ballCenterWhenCollidedX;
+        this.Y = ballCenterWhenCollidedY;
+        this.velocityX = changedVelocityX;
+        this.velocityY = changedVelocityY;
     }
 
     isActive () {
