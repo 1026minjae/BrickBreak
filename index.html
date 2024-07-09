@@ -594,9 +594,12 @@ class Ball {
         diffBetweenCenterAndCollisionPointX = cornerX - ballCenterWhenCollidedX;
         diffBetweenCenterAndCollisionPointY = cornerY - ballCenterWhenCollidedY;
 
-        tmp4 = this.velocityX * diffBetweenCenterAndCollisionPointX + this.velocityY * diffBetweenCenterAndCollisionPointY;
-        tmp5 = BALL_SPEED_SQ * (diffBetweenCenterAndCollisionPointX * diffBetweenCenterAndCollisionPointX + diffBetweenCenterAndCollisionPointY * diffBetweenCenterAndCollisionPointY);
-        tmp6 = this.velocityY * diffBetweenCenterAndCollisionPointX - this.velocityX * diffBetweenCenterAndCollisionPointY;
+        tmp4 = this.velocityX * diffBetweenCenterAndCollisionPointX 
+               + this.velocityY * diffBetweenCenterAndCollisionPointY;
+        tmp5 = BALL_SPEED_SQ * (diffBetweenCenterAndCollisionPointX * diffBetweenCenterAndCollisionPointX 
+                                + diffBetweenCenterAndCollisionPointY * diffBetweenCenterAndCollisionPointY);
+        tmp6 = this.velocityY * diffBetweenCenterAndCollisionPointX 
+               - this.velocityX * diffBetweenCenterAndCollisionPointY;
 
         cosA = 1 - 2 * (tmp4 * tmp4) / tmp5;
         sinA = 2 * tmp4 * tmp6 / tmp5;
@@ -1003,7 +1006,8 @@ function giveTenBricksBrokenScore () {
 
 function giveCleanBoardScore () {
     if (brickCnt === 0) {
-        score += SCORE_CLEANBOARD_BASIC * (brokenBrickAtThisLevelCnt + Math.floor(brokenBrickAtThisLevelInitialHealthSum / brokenBrickAtThisLevelCnt / 10));
+        score += SCORE_CLEANBOARD_BASIC * (brokenBrickAtThisLevelCnt 
+                                           + Math.floor(brokenBrickAtThisLevelInitialHealthSum / brokenBrickAtThisLevelCnt / 10));
     }
 }
 
