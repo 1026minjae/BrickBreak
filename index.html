@@ -861,19 +861,19 @@ function moveAndCollideBalls () {
     activeBallList.forEach((ball) => {
         ball.move();
 
-        if (ball.isShot()) {
-            ball.checkIfCollidedToWallThenReverseDirection();
+        if (ball.isNotShot()) return;
+        
+        ball.checkIfCollidedToWallThenReverseDirection();
 
-            let isCollided = false;
-            for (let rowIdx = 0; (rowIdx < BRICKGRID_ROW_MAX) && (!isCollided); ++rowIdx) {
-                for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
-                    if (brickGrid[rowIdx][colIdx] !== undefined
-                       && ball.checkIfCollidedToGivenBrickThenReverseDirection(rowIdx, colIdx)
-                    ) {
-                        hitBrick(rowIdx, colIdx);
-                        isCollided = true;
-                        break;
-                    }
+        let isCollided = false;
+        for (let rowIdx = 0; (rowIdx < BRICKGRID_ROW_MAX) && (!isCollided); ++rowIdx) {
+            for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
+                if (brickGrid[rowIdx][colIdx] !== undefined
+                   && ball.checkIfCollidedToGivenBrickThenReverseDirection(rowIdx, colIdx)
+                ) {
+                    hitBrick(rowIdx, colIdx);
+                    isCollided = true;
+                    break;
                 }
             }
         }
