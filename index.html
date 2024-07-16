@@ -31,10 +31,10 @@ const BRICK_INITIALHEALTH_BASIC = 1;
 const BRICK_RGB_RED_MAX = 0xCC;
 const BRICK_RGB_GREEN_MAX = 0xCC;
 const BRICK_RGB_BLUE_MAX = 0xCC;
-const BRICK_LEASTHEALTHFORBLACKBRICK = 100;
+const BRICK_LEASTHEALTHFORBLACKBRICK = 1000;
 
 const BRICKGRID_ROW_MAX = 10;
-const BRICKGRID_COLUMN_MAX = 6;
+const BRICKGRID_COLUMN_MAX =  8;
 const BRICKGRID_BRICKCNT_MAX = BRICKGRID_ROW_MAX * BRICKGRID_COLUMN_MAX;
 
 const BRICKAREA_HEIGHT = BRICK_HEIGHT * BRICKGRID_ROW_MAX;
@@ -43,7 +43,7 @@ const ARROWAREA_HEIGHT = BRICK_HEIGHT * 5;
 const BOARD_WIDTH = BRICK_WIDTH * BRICKGRID_COLUMN_MAX;
 const BOARD_HEIGHT = BRICKAREA_HEIGHT + ARROWAREA_HEIGHT;
 
-const SHOOTINGPOINT_X = Math.floor(BOARD_WIDTH / 2);
+const SHOOTINGPOINT_X_INITIAL = Math.floor(BOARD_WIDTH / 2);
 const SHOOTINGPOINT_Y = BOARD_HEIGHT - BRICK_HEIGHT;
 
 const BOARD_LEFT_WALL_X 	= 0;
@@ -51,7 +51,7 @@ const BOARD_RIGHT_WALL_X = BOARD_WIDTH;
 const BOARD_TOP_WALL_Y = 0;
 const BOARD_BOTTOM_WALL_Y = BOARD_HEIGHT;
 
-const MILLISECONDS_PER_FRAME = 8;
+const MILLISECONDS_PER_FRAME = 6;
 
 const INITIAL_BALL_CNT = 1;
 const INITIAL_BRICK_CNT = 10;
@@ -59,8 +59,8 @@ const NEWLY_CREATED_AT_EACH_LEVEL_BRICK_CNT = 5;
 
 const SCORE_BREAKBRICK_BASIC = 1;
 const SCORE_LEVELUP_BASIC = 100;
-const SCORE_FIVEBRICKSBROKEN_BASIC = 200;
-const SCORE_TENBRICKSBROKEN_BASIC = 400;
+const SCORE_FIVEBRICKSBROKEN_BASIC = 100;
+const SCORE_TENBRICKSBROKEN_BASIC = 100;
 const SCORE_CLEANBOARD_BASIC = 100;
 
 const COLLIDE_DIR_LEFT_TO_RIGHT = 0;
@@ -314,7 +314,7 @@ class Ball {
         /* Collided to top-left corner of brick? */
         else if (
             ((this.X < brick.leftX) && (this.Y < brick.topY))
-            && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
+            && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS_SQ)
         ) {
             if (this.velocityX > 0 && this.velocityY <= 0) {
                 gradient = this.velocityY / this.velocityX;
@@ -364,7 +364,7 @@ class Ball {
         /* Collided to top-right corner of brick? */
         else if (
             ((this.X > brick.rightX) && (this.Y < brick.topY))
-            && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
+            && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS_SQ)
         ) {
             if (this.velocityX < 0 && this.velocityY <= 0) {
                 gradient = this.velocityY / this.velocityX;
@@ -414,7 +414,7 @@ class Ball {
         /* Collided to bottom-left corner of brick? */
         else if (
             ((this.X < brick.leftX) && (this.Y > brick.bottomY))
-            && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
+            && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS_SQ)
         ) {
             if (this.velocityX > 0 && this.velocityY >= 0) {
                 gradient = this.velocityY / this.velocityX;
@@ -464,7 +464,7 @@ class Ball {
         /* Collided to bottom-right corner of brick? */
         else if (
             ((this.X > brick.rightX) && (this.Y > brick.bottomY))
-            && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS * BALL_RADIUS)
+            && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS_SQ)
         ) {
             if (this.velocityX < 0 && this.velocityY >= 0) {
                 gradient = this.velocityY / this.velocityX;
@@ -555,7 +555,6 @@ class Ball {
         let tmp4, tmp5, tmp6;
         let cosA, sinA;
         let changedVelocityX, changedVelocityY;
-        
 
         if (cornerType === CORNER_TOPLEFT) {
             coefficient_YDIVX = -1;
@@ -631,12 +630,15 @@ let brickCnt = 0;
 let activeBallList = [];
 let brickGrid;
 
+let shootingpoint_x = SHOOTINGPOINT_X_INITIAL;
+
 let currentLevel = 1;
 let score = 0;
 let brokenBrickAtThisLevelCnt = 0;
 let brokenBrickAtThisLevelInitialHealthSum = 0;
 
 let forcelySwitchToAimModeFlag = false;
+let madeAllBallFallFlag = false;
 
 let ctx;
 let timer;
@@ -694,7 +696,7 @@ function addNewBall () {
 }
 
 function randomlyAddNewBall () {
-    if (Math.random() - 0.5 > 0) addNewBall();
+    if (Math.random() - 0.75 > 0) addNewBall();
 }
 
 function addNewBrick () {
@@ -711,7 +713,7 @@ function addNewBrick () {
 }
 
 function brickInitialHealth () {
-    return BRICK_INITIALHEALTH_BASIC + (currentLevel - 1);
+    return BRICK_INITIALHEALTH_BASIC * (1 + Math.floor(score / 100));
 }
 
 function hitBrick (rowIdx, colIdx) {
@@ -729,7 +731,7 @@ function hitBrick (rowIdx, colIdx) {
 }
 
 function boardMouseMove (e) {
-    let translatedX = SHOOTINGPOINT_X - e.offsetX;
+    let translatedX = shootingpoint_x - e.offsetX;
     let translatedY = Math.max((SHOOTINGPOINT_Y - e.offsetY), Math.abs(translatedX * Math.tan(Math.PI / 18)));
 
     aimModeProcedure(translatedX, translatedY);
@@ -758,7 +760,7 @@ function clearArrowArea () {
 function drawArrowTowards (x, y) {
     ctx.save();
 
-    ctx.translate(SHOOTINGPOINT_X, SHOOTINGPOINT_Y);
+    ctx.translate(shootingpoint_x, SHOOTINGPOINT_Y);
     ctx.rotate(Math.PI + Math.atan(-x / y));
 
     ctx.beginPath();
@@ -796,7 +798,7 @@ function drawBallCntTxt () {
 }
 
 function boardClick (e) {
-    let translatedX = SHOOTINGPOINT_X - e.offsetX;
+    let translatedX = shootingpoint_x - e.offsetX;
     let translatedY = Math.max((SHOOTINGPOINT_Y - e.offsetY), Math.abs(translatedX * Math.tan(Math.PI / 18)));
 
     switchToCollideMode(translatedX, translatedY);
@@ -828,7 +830,7 @@ function arrangeBalls (targetX, targetY) {
     while (activeBallList.length > 0) activeBallList.pop();
 
     for (let i = 0; i < ballCnt; ++i) {
-        let newBall = new Ball(SHOOTINGPOINT_X + i * gapX, 
+        let newBall = new Ball(shootingpoint_x + i * gapX, 
                                      SHOOTINGPOINT_Y + i * gapY, 
                                      velocityX, velocityY);
         activeBallList.push(newBall);
@@ -838,9 +840,9 @@ function arrangeBalls (targetX, targetY) {
 function collideModeProcedure () {
     clearBoard();
     moveAndCollideBalls();
-    removeInactiveBalls();
+    removeInactiveBallsAndMoveShootingPoint();
 
-    if (activeBallList.length === 0 || forcelySwitchToAimModeFlag) {
+    if (activeBallList.length === 0) {
         switchToAimMode();
     }
     else {
@@ -864,6 +866,17 @@ function moveAndCollideBalls () {
     activeBallList.forEach((ball) => {
         ball.move();
 
+        if (forcelySwitchToAimModeFlag) {
+            if (!madeAllBallFallFlag) {
+                activeBallList.forEach((ball) => {
+                    ball.velocityX = 0;
+                    ball.velocityY = BALL_SPEED;
+                });
+                madeAllBallFallFlag = true;
+            }
+            return;
+        }
+
         if (ball.isNotShot()) return;
         
         ball.checkIfCollidedToWallThenReverseDirection();
@@ -883,9 +896,17 @@ function moveAndCollideBalls () {
     });
 }
 
-function removeInactiveBalls () {
+function removeInactiveBallsAndMoveShootingPoint () {
     activeBallList = activeBallList.filter((ball) => {
-        return ball.isActive();
+        if (ball.isActive()) return true;
+        else if (ball.velocityY !== 0) {
+            shootingpoint_x = (ball.velocityX / ball.velocityY) * (SHOOTINGPOINT_Y - ball.Y) + ball.X;
+            return false;
+        }
+        else {
+            shootingpoint_x = ball.X;
+            return false;
+        }
     });
 }
 
@@ -930,7 +951,9 @@ function drawBricks () {
 
 function switchToAimMode () {
     clearInterval(timer);
+
     forcelySwitchToAimModeFlag = false;
+    madeAllBallFallFlag = false;
 
     if (gameOver()) {
         drawGameOverMsg();
