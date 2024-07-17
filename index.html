@@ -26,14 +26,14 @@ const BALL_SPEED_SQ = BALL_SPEED * BALL_SPEED;
 const ARROW_LENGTH = 100;
 
 const BRICK_WIDTH = 100;
-const BRICK_HEIGHT = 50;
+const BRICK_HEIGHT = 40;
 const BRICK_INITIALHEALTH_BASIC = 1;
 const BRICK_RGB_RED_MAX = 0xCC;
 const BRICK_RGB_GREEN_MAX = 0xCC;
 const BRICK_RGB_BLUE_MAX = 0xCC;
 const BRICK_LEASTHEALTHFORBLACKBRICK = 1000;
 
-const BRICKGRID_ROW_MAX = 10;
+const BRICKGRID_ROW_MAX = 16;
 const BRICKGRID_COLUMN_MAX =  8;
 const BRICKGRID_BRICKCNT_MAX = BRICKGRID_ROW_MAX * BRICKGRID_COLUMN_MAX;
 
@@ -51,11 +51,11 @@ const BOARD_RIGHT_WALL_X = BOARD_WIDTH;
 const BOARD_TOP_WALL_Y = 0;
 const BOARD_BOTTOM_WALL_Y = BOARD_HEIGHT;
 
-const MILLISECONDS_PER_FRAME = 6;
+const MILLISECONDS_PER_FRAME = 4;
 
 const INITIAL_BALL_CNT = 1;
-const INITIAL_BRICK_CNT = 10;
-const NEWLY_CREATED_AT_EACH_LEVEL_BRICK_CNT = 5;
+const INITIAL_BRICK_CNT = Math.floor(BRICKGRID_BRICKCNT_MAX / 4);
+const NEWLY_CREATED_AT_EACH_LEVEL_BRICK_CNT = Math.floor(INITIAL_BRICK_CNT / 3);
 
 const SCORE_BREAKBRICK_BASIC = 1;
 const SCORE_LEVELUP_BASIC = 100;
@@ -137,7 +137,7 @@ class Ball {
         return isCollided;
     }
 
-    checkIfCollidedToGivenBrickThenReverseDirection (rowIdx, colIdx) {
+    checkIfCollidedToSideOfGivenBrickThenReverseDirection (rowIdx, colIdx) {
         let brick = brickGrid[rowIdx][colIdx];
         let isCollided = false;
         let ballCenterWhenCollidedX, ballCenterWhenCollidedY;
@@ -153,36 +153,14 @@ class Ball {
                 ballCenterWhenCollidedX = brick.leftX - BALL_RADIUS;
                 ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
 
-                /* Collided to top-left corner */
-                if (ballCenterWhenCollidedY < brick.topY) {
-                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
-                }
                 /* Collided to left side of brick */
-                else if (ballCenterWhenCollidedY <= brick.bottomY) {
+                if (ballCenterWhenCollidedY <= brick.bottomY) {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityX *= -1;
+                    
+                    isCollided = true;
                 }
-                /* Collided to bottom-left corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
-                }
-                
-                isCollided = true;
-            }
-            else if (this.velocityX === 0 && this.velocityY !== 0) {
-                gradient = this.velocityX / this.velocityY;
-
-                /* Collided to top-left corner */
-                if (this.velocityY > 0) {
-                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_XDIVY, gradient);
-                }
-                /* Collided to bottom-left corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_XDIVY, gradient);
-                }
-
-                isCollided = true;
             }
         }
         /* Collided to right side of brick? */
@@ -195,36 +173,14 @@ class Ball {
                 ballCenterWhenCollidedX = brick.rightX + BALL_RADIUS;
                 ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
 
-                /* Collided to top-right corner */
-                if (ballCenterWhenCollidedY < brick.topY) {
-                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
-                }
                 /* Collided to right side of brick */
-                else if (ballCenterWhenCollidedY <= brick.bottomY) {
+                if (ballCenterWhenCollidedY <= brick.bottomY) {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityX *= -1;
+                    
+                    isCollided = true;
                 }
-                /* Collided to bottom-right corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_YDIVX, gradient);
-                }
-                
-                isCollided = true;
-            }
-            else if (this.velocityX === 0 && this.velocityY !== 0) {
-                gradient = this.velocityX / this.velocityY;
-
-                /* Collided to top-right corner */
-                if (this.velocityY > 0) {
-                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_XDIVY, gradient);
-                }
-                /* Collided to bottom-right corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_XDIVY, gradient);
-                }
-
-                isCollided = true;
             }
         }
         /* Collided to top side of brick? */
@@ -237,36 +193,14 @@ class Ball {
                 ballCenterWhenCollidedY = brick.topY - BALL_RADIUS;
                 ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
 
-                /* Collided to top-left corner */
-                if (ballCenterWhenCollidedX < brick.leftX) {
-                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_XDIVY, gradient);
-                }
                 /* Collided to top side of brick */
-                else if (ballCenterWhenCollidedX <= brick.rightX) {
+                if (ballCenterWhenCollidedX <= brick.rightX) {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityY *= -1;
+                    
+                    isCollided = true;
                 }
-                /* Collided to top-right corner */
-                else {
-                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_XDIVY, gradient);
-                }
-                
-                isCollided = true;
-            }
-            else if (this.velocityY === 0 && this.velocityX !== 0) {
-                gradient = this.velocityY / this.velocityX;
-
-                /* Collided to top-left corner */
-                if (this.velocityX > 0) {
-                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
-                }
-                /* Collided to top-right corner */
-                else {
-                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
-                }
-
-                isCollided = true;
             }
         }
         /* Collided to bottom side of brick? */
@@ -279,36 +213,14 @@ class Ball {
                 ballCenterWhenCollidedY = brick.bottomY + BALL_RADIUS;
                 ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
 
-                /* Collided to bottom-left corner */
-                if (ballCenterWhenCollidedX < brick.leftX) {
-                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_XDIVY, gradient);
-                }
                 /* Collided to bottom side of brick */
-                else if (ballCenterWhenCollidedX <= brick.rightX) {
+                if (ballCenterWhenCollidedX <= brick.rightX) {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityY *= -1;
+                    
+                    isCollided = true;
                 }
-                /* Collided to bottom-right corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_XDIVY, gradient);
-                }
-                
-                isCollided = true;
-            }
-            else if (this.velocityY === 0 && this.velocityX !== 0) {
-                gradient = this.velocityY / this.velocityX;
-
-                /* Collided to bottom-left corner */
-                if (this.velocityX > 0) {
-                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
-                }
-                /* Collided to top-right corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_YDIVX, gradient);
-                }
-
-                isCollided = true;
             }
         }
         /* Collided to top-left corner of brick? */
@@ -326,21 +238,9 @@ class Ball {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityX *= -1;
-                }
-                /* Collided to top-left corner */
-                else {
-                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
-                }
-
-                isCollided = true;
-            }
-            /* Collided to top-left corner */
-            else if (this.velocityX > 0 && this.velocityY < 0) {
-                gradient = this.velocityY / this.velocityX;
                     
-                this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
-
-                isCollided = true;
+                    isCollided = true;
+                }
             }
             else if (this.velocityX <= 0 && this.velocityY > 0) {
                 gradient = this.velocityX / this.velocityY;
@@ -352,13 +252,9 @@ class Ball {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityY *= -1;
+                    
+                    isCollided = true;
                 }
-                /* Collided to top-left corner */
-                else {
-                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_XDIVY, gradient);
-                }
-
-                isCollided = true;
             }
         }
         /* Collided to top-right corner of brick? */
@@ -376,21 +272,9 @@ class Ball {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityX *= -1;
+                    
+                    isCollided = true;
                 }
-                /* Collided to top-right corner */
-                else {
-                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
-                }
-
-                isCollided = true;
-            }
-            /* Collided to top-right corner */
-            else if (this.velocityX < 0 && this.velocityY > 0) {
-                gradient = this.velocityY / this.velocityX;
-                
-                this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
-
-                isCollided = true;
             }
             else if (this.velocityX >= 0 && this.velocityY > 0) {
                 gradient = this.velocityX / this.velocityY;
@@ -426,21 +310,9 @@ class Ball {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityX *= -1;
-                }
-                /* Collided to bottom-left corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
-                }
-
-                isCollided = true;
-            }
-            /* Collided to bottom-left corner */
-            else if (this.velocityX > 0 && this.velocityY < 0) {
-                gradient = this.velocityY / this.velocityX;
                     
-                this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
-
-                isCollided = true;
+                    isCollided = true;
+                }
             }
             else if (this.velocityX <= 0 && this.velocityY < 0) {
                 gradient = this.velocityX / this.velocityY;
@@ -452,13 +324,9 @@ class Ball {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityY *= -1;
+                    
+                    isCollided = true;
                 }
-                /* Collided to bottom-left corner */
-                else {
-                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_XDIVY, gradient);
-                }
-
-                isCollided = true;
             }
         }
         /* Collided to bottom-right corner of brick? */
@@ -476,13 +344,317 @@ class Ball {
                     this.X = ballCenterWhenCollidedX;
                     this.Y = ballCenterWhenCollidedY;
                     this.velocityX *= -1;
+                    
+                    isCollided = true;
+                }
+            }
+            else if (this.velocityX >= 0 && this.velocityY < 0) {
+                gradient = this.velocityX / this.velocityY;
+                ballCenterWhenCollidedY = brick.bottomY + BALL_RADIUS;
+                ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
+
+                /* Collided to bottom side of brick */
+                if (ballCenterWhenCollidedX <= brick.rightX) {
+                    this.X = ballCenterWhenCollidedX;
+                    this.Y = ballCenterWhenCollidedY;
+                    this.velocityY *= -1;
+                    
+                    isCollided = true;
+                }
+            }
+        }
+
+        return isCollided;
+    }
+
+    checkIfCollidedToCornerOfGivenBrickThenReverseDirection (rowIdx, colIdx) {
+        let brick = brickGrid[rowIdx][colIdx];
+        let isCollided = false;
+        let ballCenterWhenCollidedX, ballCenterWhenCollidedY;
+        let gradient;
+
+        /* Collided to left side of brick? */
+        if (
+            ((brick.leftX - BALL_RADIUS < this.X) && (this.X <= brick.leftX)) 
+            && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
+        ) { 
+            if (this.velocityX > 0) {
+                gradient = this.velocityY / this.velocityX;
+                ballCenterWhenCollidedX = brick.leftX - BALL_RADIUS;
+                ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
+
+                /* Collided to top-left corner */
+                if (ballCenterWhenCollidedY < brick.topY) {
+                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
+                }
+                /* Collided to bottom-left corner */
+                else if (ballCenterWhenCollidedY > brick.bottomY) {
+                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+            else if (this.velocityX === 0 && this.velocityY !== 0) {
+                gradient = this.velocityX / this.velocityY;
+
+                /* Collided to top-left corner */
+                if (this.velocityY > 0) {
+                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_XDIVY, gradient);
+                }
+                /* Collided to bottom-left corner */
+                else {
+                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_XDIVY, gradient);
+                }
+
+                isCollided = true;
+            }
+        }
+        /* Collided to right side of brick? */
+        else if (
+            ((brick.rightX <= this.X) && (this.X <= brick.rightX + BALL_RADIUS)) 
+            && ((brick.topY <= this.Y) && (this.Y <= brick.bottomY))
+        ) { 
+            if (this.velocityX < 0) {
+                gradient = this.velocityY / this.velocityX;
+                ballCenterWhenCollidedX = brick.rightX + BALL_RADIUS;
+                ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
+
+                /* Collided to top-right corner */
+                if (ballCenterWhenCollidedY < brick.topY) {
+                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
                 }
                 /* Collided to bottom-right corner */
+                else if (ballCenterWhenCollidedY > brick.bottomY) {
+                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+            else if (this.velocityX === 0 && this.velocityY !== 0) {
+                gradient = this.velocityX / this.velocityY;
+
+                /* Collided to top-right corner */
+                if (this.velocityY > 0) {
+                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_XDIVY, gradient);
+                }
+                /* Collided to bottom-right corner */
+                else {
+                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_XDIVY, gradient);
+                }
+
+                isCollided = true;
+            }
+        }
+        /* Collided to top side of brick? */
+        else if (
+            ((brick.topY - BALL_RADIUS <= this.Y) && (this.Y <= brick.topY))
+            && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
+        ) { 
+            if (this.velocityY > 0) {
+                gradient = this.velocityX / this.velocityY;
+                ballCenterWhenCollidedY = brick.topY - BALL_RADIUS;
+                ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
+
+                /* Collided to top-left corner */
+                if (ballCenterWhenCollidedX < brick.leftX) {
+                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
+                }
+                /* Collided to top-right corner */
+                else if (ballCenterWhenCollidedX > brick.rightX) {
+                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+            else if (this.velocityY === 0 && this.velocityX !== 0) {
+                gradient = this.velocityY / this.velocityX;
+
+                /* Collided to top-left corner */
+                if (this.velocityX > 0) {
+                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
+                }
+                /* Collided to top-right corner */
+                else {
+                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
+                }
+
+                isCollided = true;
+            }
+        }
+        /* Collided to bottom side of brick? */
+        else if (
+            ((brick.bottomY <= this.Y) && (this.Y <= brick.bottomY + BALL_RADIUS))
+            && ((brick.leftX <= this.X) && (this.X <= brick.rightX))
+        ) { 
+            if (this.velocityY < 0) {
+                gradient = this.velocityX / this.velocityY;
+                ballCenterWhenCollidedY = brick.bottomY + BALL_RADIUS;
+                ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
+
+                /* Collided to bottom-left corner */
+                if (ballCenterWhenCollidedX < brick.leftX) {
+                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
+                }
+                /* Collided to bottom-right corner */
+                else if (ballCenterWhenCollidedX > brick.rightX) {
+                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+            else if (this.velocityY === 0 && this.velocityX !== 0) {
+                gradient = this.velocityY / this.velocityX;
+
+                /* Collided to bottom-left corner */
+                if (this.velocityX > 0) {
+                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
+                }
+                /* Collided to top-right corner */
                 else {
                     this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_YDIVX, gradient);
                 }
 
                 isCollided = true;
+            }
+        }
+        /* Collided to top-left corner of brick? */
+        else if (
+            ((this.X < brick.leftX) && (this.Y < brick.topY))
+            && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS_SQ)
+        ) {
+            if (this.velocityX > 0 && this.velocityY <= 0) {
+                gradient = this.velocityY / this.velocityX;
+                ballCenterWhenCollidedX = brick.leftX - BALL_RADIUS;
+                ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
+
+                /* Collided to top-left corner */
+                if (ballCenterWhenCollidedY < brick.topY) {
+                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+            /* Collided to top-left corner */
+            else if (this.velocityX > 0 && this.velocityY < 0) {
+                gradient = this.velocityY / this.velocityX;
+                    
+                this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_YDIVX, gradient);
+
+                isCollided = true;
+            }
+            else if (this.velocityX <= 0 && this.velocityY > 0) {
+                gradient = this.velocityX / this.velocityY;
+                ballCenterWhenCollidedY = brick.topY - BALL_RADIUS;
+                ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
+
+                /* Collided to top-left corner */
+                if (ballCenterWhenCollidedX < brick.leftX) {
+                    this.collideToCorner(CORNER_TOPLEFT, brick.leftX, brick.topY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+        }
+        /* Collided to top-right corner of brick? */
+        else if (
+            ((this.X > brick.rightX) && (this.Y < brick.topY))
+            && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.topY - this.Y) * (brick.topY - this.Y)) <= BALL_RADIUS_SQ)
+        ) {
+            if (this.velocityX < 0 && this.velocityY <= 0) {
+                gradient = this.velocityY / this.velocityX;
+                ballCenterWhenCollidedX = brick.rightX + BALL_RADIUS;
+                ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
+
+                /* Collided to top-right corner */
+                if (ballCenterWhenCollidedY < brick.topY) {
+                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+            /* Collided to top-right corner */
+            else if (this.velocityX < 0 && this.velocityY > 0) {
+                gradient = this.velocityY / this.velocityX;
+                
+                this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_YDIVX, gradient);
+
+                isCollided = true;
+            }
+            else if (this.velocityX >= 0 && this.velocityY > 0) {
+                gradient = this.velocityX / this.velocityY;
+                ballCenterWhenCollidedY = brick.topY - BALL_RADIUS;
+                ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
+
+                /* Collided to top-right corner */
+                if (ballCenterWhenCollidedX > brick.rightX) {
+                    this.collideToCorner(CORNER_TOPRIGHT, brick.rightX, brick.topY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+        }
+        /* Collided to bottom-left corner of brick? */
+        else if (
+            ((this.X < brick.leftX) && (this.Y > brick.bottomY))
+            && (((brick.leftX - this.X) * (brick.leftX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS_SQ)
+        ) {
+            if (this.velocityX > 0 && this.velocityY >= 0) {
+                gradient = this.velocityY / this.velocityX;
+                ballCenterWhenCollidedX = brick.leftX - BALL_RADIUS;
+                ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
+
+                /* Collided to bottom-left corner */
+                if (ballCenterWhenCollidedY > brick.bottomY) {
+                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+            /* Collided to bottom-left corner */
+            else if (this.velocityX > 0 && this.velocityY < 0) {
+                gradient = this.velocityY / this.velocityX;
+                    
+                this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_YDIVX, gradient);
+
+                isCollided = true;
+            }
+            else if (this.velocityX <= 0 && this.velocityY < 0) {
+                gradient = this.velocityX / this.velocityY;
+                ballCenterWhenCollidedY = brick.bottomY + BALL_RADIUS;
+                ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
+
+                /* Collided to bottom-left corner */
+                if (ballCenterWhenCollidedX < brick.leftX) {
+                    this.collideToCorner(CORNER_BOTTOMLEFT, brick.leftX, brick.bottomY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
+                }
+            }
+        }
+        /* Collided to bottom-right corner of brick? */
+        else if (
+            ((this.X > brick.rightX) && (this.Y > brick.bottomY))
+            && (((brick.rightX - this.X) * (brick.rightX - this.X) + (brick.bottomY - this.Y) * (brick.bottomY - this.Y)) <= BALL_RADIUS_SQ)
+        ) {
+            if (this.velocityX < 0 && this.velocityY >= 0) {
+                gradient = this.velocityY / this.velocityX;
+                ballCenterWhenCollidedX = brick.rightX + BALL_RADIUS;
+                ballCenterWhenCollidedY = gradient * (ballCenterWhenCollidedX - this.X) + this.Y;
+
+                /* Collided to bottom-right corner */
+                if (ballCenterWhenCollidedY > brick.bottomY) {
+                    this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_YDIVX, gradient);
+                    
+                    isCollided = true;
+                }
             }
             /* Collided to bottom-right corner */
             else if (this.velocityX < 0 && this.velocityY < 0) {
@@ -497,18 +669,12 @@ class Ball {
                 ballCenterWhenCollidedY = brick.bottomY + BALL_RADIUS;
                 ballCenterWhenCollidedX = gradient * (ballCenterWhenCollidedY - this.Y) + this.X;
 
-                /* Collided to bottom side of brick */
-                if (ballCenterWhenCollidedX <= brick.rightX) {
-                    this.X = ballCenterWhenCollidedX;
-                    this.Y = ballCenterWhenCollidedY;
-                    this.velocityY *= -1;
-                }
                 /* Collided to bottom-right corner */
-                else {
+                if (ballCenterWhenCollidedX > brick.rightX) {
                     this.collideToCorner(CORNER_BOTTOMRIGHT, brick.rightX, brick.bottomY, GRADIENT_XDIVY, gradient);
+                    
+                    isCollided = true;
                 }
-
-                isCollided = true;
             }
         }
 
@@ -882,10 +1048,23 @@ function moveAndCollideBalls () {
         ball.checkIfCollidedToWallThenReverseDirection();
 
         let isCollided = false;
+
         for (let rowIdx = 0; (rowIdx < BRICKGRID_ROW_MAX) && (!isCollided); ++rowIdx) {
             for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
                 if (brickGrid[rowIdx][colIdx] !== undefined
-                   && ball.checkIfCollidedToGivenBrickThenReverseDirection(rowIdx, colIdx)
+                   && ball.checkIfCollidedToSideOfGivenBrickThenReverseDirection(rowIdx, colIdx)
+                ) {
+                    hitBrick(rowIdx, colIdx);
+                    isCollided = true;
+                    break;
+                }
+            }
+        }
+
+        for (let rowIdx = 0; (rowIdx < BRICKGRID_ROW_MAX) && (!isCollided); ++rowIdx) {
+            for (let colIdx = 0; colIdx < BRICKGRID_COLUMN_MAX; ++colIdx) {
+                if (brickGrid[rowIdx][colIdx] !== undefined
+                   && ball.checkIfCollidedToCornerOfGivenBrickThenReverseDirection(rowIdx, colIdx)
                 ) {
                     hitBrick(rowIdx, colIdx);
                     isCollided = true;
