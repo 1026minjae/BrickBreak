@@ -1,4 +1,4 @@
-<!DOCTYPE html5>
+<!DOCTYPE html>
 
 <html>
 
@@ -13,6 +13,9 @@ body {
 }
 canvas {
     border: 1px black solid;
+}
+input {
+    text-align: center;
 }
 </style>
 
@@ -56,6 +59,7 @@ const MILLISECONDS_PER_FRAME = 4;
 const INITIAL_BALL_CNT = 1;
 const INITIAL_BRICK_CNT = Math.floor(BRICKGRID_BRICKCNT_MAX / 4);
 const NEWLY_CREATED_AT_EACH_LEVEL_BRICK_CNT = Math.floor(INITIAL_BRICK_CNT / 3);
+const PROBABILITY_OF_NEW_BALL_GENERATION = 0.25;
 
 const SCORE_BREAKBRICK_BASIC = 1;
 const SCORE_LEVELUP_BASIC = 100;
@@ -792,6 +796,8 @@ class Ball {
 }
 
 let ballCnt = 0;
+let shotBallCnt = 1;
+let remainingBallCnt = 0;
 let brickCnt = 0;
 let activeBallList = [];
 let brickGrid;
@@ -828,7 +834,14 @@ function initUI () {
     ctx = board.getContext("2d");
     ctx.font = "20px bolder serif";
 
+    let shotBallCntInput = document.createElement("input");
+    shotBallCntInput.setAttribute("id", "shotBallCntInput");
+    shotBallCntInput.setAttribute("type", "number");
+    shotBallCntInput.value = 1;
+    body.appendChild(shotBallCntInput);
+
     let forcelySwitchToAimModeBtn = document.createElement("input");
+    forcelySwitchToAimModeBtn.setAttribute("id", "forcelySwitchToAimModeBtn");
     forcelySwitchToAimModeBtn.setAttribute("type", "button");
     forcelySwitchToAimModeBtn.setAttribute("value", "Kill Balls");
     body.appendChild(forcelySwitchToAimModeBtn);
@@ -859,10 +872,11 @@ function initGame () {
 
 function addNewBall () {
     ballCnt += 1;
+    remainingBallCnt += 1;
 }
 
 function randomlyAddNewBall () {
-    if (Math.random() - 0.75 > 0) addNewBall();
+    if (Math.random() - PROBABILITY_OF_NEW_BALL_GENERATION <= 0) addNewBall();
 }
 
 function addNewBrick () {
@@ -914,6 +928,7 @@ function aimModeProcedure (targetX, targetY) {
     drawCurrentLevelTxt();
     drawScoreTxt();
     drawBallCntTxt();
+    drawRemainingBallCntTxt();
 }
 
 function clearArrowArea () {
@@ -952,15 +967,19 @@ function drawBaseline () {
 }
 
 function drawCurrentLevelTxt () {
-    ctx.fillText(("Level " + currentLevel.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 48);
+    ctx.fillText(("Level " + currentLevel.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 68);
 }
 
 function drawScoreTxt () {
-    ctx.fillText(("Score: " + score.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 28);
+    ctx.fillText(("Score: " + score.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 48);
 }
 
 function drawBallCntTxt () {
-    ctx.fillText(("●: " + ballCnt.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 8);
+    ctx.fillText(("Total Balls: " + ballCnt.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 28);
+}
+
+function drawRemainingBallCntTxt () {
+    ctx.fillText(("Remaining Balls: " + remainingBallCnt.toString()), BOARD_LEFT_WALL_X + 5, SHOOTINGPOINT_Y - 8);
 }
 
 function boardClick (e) {
@@ -975,8 +994,10 @@ function switchToCollideMode (targetX, targetY) {
     board.removeEventListener("mousemove", boardMouseMove);
     board.removeEventListener("click", boardClick);
 
-    let forcelySwitchToAimModeBtn = document.querySelector("input");
+    let forcelySwitchToAimModeBtn = document.querySelector("#forcelySwitchToAimModeBtn");
     forcelySwitchToAimModeBtn.addEventListener("click", forcelySwitchToAimMode);
+
+    readShotBallCnt();
 
     arrangeBalls(targetX, targetY);
     
@@ -984,6 +1005,12 @@ function switchToCollideMode (targetX, targetY) {
     brokenBrickAtThisLevelInitialHealthSum = 0;
 
     timer = setInterval(collideModeProcedure, MILLISECONDS_PER_FRAME);
+}
+
+function readShotBallCnt () {
+    let shotBallCntInput = document.querySelector("#shotBallCntInput");
+    shotBallCnt = Math.min(remainingBallCnt, parseInt(shotBallCntInput.value));
+    shotBallCnt = Math.max(1, shotBallCnt);
 }
 
 function arrangeBalls (targetX, targetY) {
@@ -995,16 +1022,19 @@ function arrangeBalls (targetX, targetY) {
 
     while (activeBallList.length > 0) activeBallList.pop();
 
-    for (let i = 0; i < ballCnt; ++i) {
+    for (let i = 0; i < shotBallCnt; ++i) {
         let newBall = new Ball(shootingpoint_x + i * gapX, 
                                      SHOOTINGPOINT_Y + i * gapY, 
                                      velocityX, velocityY);
         activeBallList.push(newBall);
     }
+
+    remainingBallCnt -= shotBallCnt;
 }
 
 function collideModeProcedure () {
     clearBoard();
+    checkIfForcelySwitchToAimModeFlagOnThenDoAction();
     moveAndCollideBalls();
     removeInactiveBallsAndMoveShootingPoint();
 
@@ -1018,6 +1048,7 @@ function collideModeProcedure () {
         drawCurrentLevelTxt();
         drawScoreTxt();
         drawBallCntTxt();
+        drawRemainingBallCntTxt();
     }
 }
 
@@ -1028,22 +1059,38 @@ function clearBoard () {
                     BOARD_HEIGHT);
 }
 
+function checkIfForcelySwitchToAimModeFlagOnThenDoAction () {
+    if (forcelySwitchToAimModeFlag) {
+        recycleNotShotBalls();
+        makeAllBallFall();
+    }
+}
+
+function recycleNotShotBalls () {
+    activeBallList.filter((ball) => {
+        if (ball.isShot()) return true; 
+        else {
+            remainingBallCnt += 1;
+            return false;
+        }
+    });
+}
+
+function makeAllBallFall () {
+    if(!madeAllBallFallFlag) {
+        activeBallList.forEach((ball) => {
+            ball.velocityX = 0;
+            ball.velocityY = BALL_SPEED;
+         });
+        madeAllBallFallFlag = true;
+    }
+}
+
 function moveAndCollideBalls () {
     activeBallList.forEach((ball) => {
-        ball.move();
+        ball.move();        
 
-        if (forcelySwitchToAimModeFlag) {
-            if (!madeAllBallFallFlag) {
-                activeBallList.forEach((ball) => {
-                    ball.velocityX = 0;
-                    ball.velocityY = BALL_SPEED;
-                });
-                madeAllBallFallFlag = true;
-            }
-            return;
-        }
-
-        if (ball.isNotShot()) return;
+        if (ball.isNotShot() || forcelySwitchToAimModeFlag) return;
         
         ball.checkIfCollidedToWallThenReverseDirection();
 
@@ -1138,16 +1185,12 @@ function switchToAimMode () {
         drawGameOverMsg();
     }
     else {
-        giveLevelUpScore();
         giveFiveBricksBrokenScore();
         giveTenBricksBrokenScore();
         giveCleanBoardScore();
 
-        brokenBrickAtThisLevelCnt = 0;
-        brokenBrickAtThisLevelInitialHealthSum = 0;
-        currentLevel += 1;
+        checkIfAllBallShotThenLevelUp();
 
-        addBricksAtLevelUp();
         drawBricks();
         resetArrowArea();
 
@@ -1155,13 +1198,30 @@ function switchToAimMode () {
         board.addEventListener("mousemove", boardMouseMove);
         board.addEventListener("click", boardClick);
 
-        let forcelySwitchToAimModeBtn = document.querySelector("input");
+        let forcelySwitchToAimModeBtn = document.querySelector("#forcelySwitchToAimModeBtn");
         forcelySwitchToAimModeBtn.removeEventListener("click", forcelySwitchToAimMode);
+
+
+        let shotBallCntInput = document.querySelector("#shotBallCntInput");
+        shotBallCntInput.value = remainingBallCnt;
     }
 }
 
 function forcelySwitchToAimMode () {
     forcelySwitchToAimModeFlag = true;
+}
+
+function checkIfAllBallShotThenLevelUp () {
+    if (remainingBallCnt <= 0) {
+        currentLevel += 1;
+
+        giveLevelUpScore();
+        addBricksAtLevelUp();
+
+        brokenBrickAtThisLevelCnt = 0;
+        brokenBrickAtThisLevelInitialHealthSum = 0;
+        remainingBallCnt = ballCnt;
+    }
 }
 
 function gameOver () {
